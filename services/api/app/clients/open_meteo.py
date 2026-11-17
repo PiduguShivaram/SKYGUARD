@@ -59,22 +59,25 @@ class OpenMeteoClient:
         self.forecast_url = settings.OPEN_METEO_BASE_URL
         self.timeout = httpx.Timeout(10.0, connect=5.0)
 
-    async def search_locations(self, query: str, count: int = 8) -> List[LocationSearchResult]:
+    async def search_locations(
+        self, query: str, count: int = 5, country_code: Optional[str] = None
+    ) -> List[LocationSearchResult]:
         term = query.strip()
         if len(term) < 2:
             return []
 
+        params: Dict[str, Any] = {
+            "name": term,
+            "count": count,
+            "language": "en",
+            "format": "json",
+        }
+        if country_code and country_code.strip():
+            params["country_code"] = country_code.strip()
+
         async with httpx.AsyncClient(timeout=self.timeout) as client:
             try:
-                response = await client.get(
-                    f"{self.geocoding_url}/search",
-                    params={
-                        "name": term,
-                        "count": count,
-                        "language": "en",
-                        "format": "json",
-                    },
-                )
+                response = await client.get(f"{self.geocoding_url}/search", params=params)
                 response.raise_for_status()
                 data = response.json()
             except httpx.TimeoutException:
@@ -160,6 +163,8 @@ class OpenMeteoClient:
         current_data = data.get("current", {})
         hourly_data = data.get("hourly", {})
         daily_data = data.get("daily", {})
+        current_units = data.get("current_units", {})
+        daily_units = data.get("daily_units", {})
 
         if not current_data or not daily_data:
             raise HTTPException(
@@ -245,6 +250,16 @@ class OpenMeteoClient:
                 )
             )
 
+        # Assemble units dictionary directly from upstream Open-Meteo units
+        units_map: Dict[str, str] = {
+            "temperature": current_units.get("temperature_2m", "°C"),
+            "relative_humidity": current_units.get("relative_humidity_2m", "%"),
+            "apparent_temperature": current_units.get("apparent_temperature", "°C"),
+            "precipitation": current_units.get("precipitation", "mm"),
+            "wind_speed": current_units.get("wind_speed_10m", "km/h"),
+            "wind_gusts": daily_units.get("wind_gusts_10m_max", "km/h"),
+        }
+
         provenance = Provenance(
             provider="Open-Meteo",
             source_model="Seamless Multi-Model NWP (ECMWF IFS / GFS / ICON)",
@@ -253,11 +268,15 @@ class OpenMeteoClient:
         )
 
         return WeatherForecastResponse(
-            latitude=data.get("latitude", latitude),
-            longitude=data.get("longitude", longitude),
+            requested_latitude=latitude,
+            requested_longitude=longitude,
+            latitude=float(data.get("latitude", latitude)),
+            longitude=float(data.get("longitude", longitude)),
             elevation=data.get("elevation"),
             timezone=data.get("timezone", "UTC"),
             timezone_abbreviation=data.get("timezone_abbreviation"),
+            utc_offset_seconds=data.get("utc_offset_seconds"),
+            units=units_map,
             current=current,
             hourly=hourly_points,
             daily=daily_points,

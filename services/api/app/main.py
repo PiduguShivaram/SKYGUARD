@@ -1,15 +1,21 @@
 """FastAPI application entry point for SkyGuard API."""
-from fastapi import FastAPI, Request
+from datetime import datetime, timezone
+from typing import Optional
+from fastapi import FastAPI, Query, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
+from services.api.app.clients.open_meteo import open_meteo_client
 from services.api.app.config import settings
 from services.api.app.routers import alerts, farmer, geo, health, risk, weather
+from services.api.app.schemas.common import Provenance
+from services.api.app.schemas.geo import GeocodingResponse
+from services.api.app.schemas.weather import WeatherForecastResponse
 
 app = FastAPI(
     title=settings.PROJECT_NAME,
     version=settings.VERSION,
-    description="SkyGuard API — Real-time Weather, Official Warnings, and Climate Intelligence",
+    description="SkyGuard API — Real-time Weather and Climate Intelligence",
     docs_url="/docs",
     redoc_url="/redoc",
 )
@@ -23,7 +29,49 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Include Routers
+# Core Endpoints matching API Contract
+@app.get("/health", tags=["Health"])
+async def get_health():
+    """Server health only."""
+    return {
+        "status": "HEALTHY",
+        "service": settings.PROJECT_NAME,
+        "version": settings.VERSION,
+        "server_utc_time": datetime.now(timezone.utc).isoformat(),
+    }
+
+
+@app.get("/api/v1/locations", response_model=GeocodingResponse, tags=["Locations"])
+async def get_locations(
+    q: str = Query(..., min_length=2, description="Place or city search query"),
+    count: int = Query(5, ge=1, le=20, description="Max results"),
+    country_code: Optional[str] = Query(None, description="ISO-3166 country code (e.g. IN)"),
+):
+    """Search locations using Open-Meteo Geocoding API."""
+    results = await open_meteo_client.search_locations(query=q, count=count, country_code=country_code)
+    provenance = Provenance(
+        provider="Open-Meteo Geocoding API",
+        attribution_url="https://open-meteo.com/en/docs/geocoding-api",
+        disclaimer="Geocoding data provided by Open-Meteo via OpenStreetMap and GeoNames data.",
+    )
+    return GeocodingResponse(
+        query=q,
+        count=len(results),
+        results=results,
+        provenance=provenance,
+    )
+
+
+@app.get("/api/v1/weather", response_model=WeatherForecastResponse, tags=["Weather"])
+async def get_weather(
+    latitude: float = Query(..., ge=-90.0, le=90.0, description="Latitude coordinate"),
+    longitude: float = Query(..., ge=-180.0, le=180.0, description="Longitude coordinate"),
+):
+    """Retrieve 7-day forecast from Open-Meteo NWP model."""
+    return await open_meteo_client.get_forecast(latitude=latitude, longitude=longitude)
+
+
+# Include Additional Modular Routers
 app.include_router(health.router)
 app.include_router(geo.router)
 app.include_router(weather.router)
@@ -38,8 +86,8 @@ async def root():
         "service": settings.PROJECT_NAME,
         "version": settings.VERSION,
         "docs": "/docs",
-        "health": "/api/health",
-        "data_integrity_policy": "Strict zero-fabrication. Official warnings separated from numerical forecasts.",
+        "health": "/health",
+        "data_integrity_policy": "Strict zero-fabrication. Real Open-Meteo provider data.",
     }
 
 

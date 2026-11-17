@@ -5,7 +5,18 @@ from services.api.app.main import app
 
 
 @pytest.mark.asyncio
-async def test_health_endpoint():
+async def test_server_health_only_endpoint():
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as client:
+        response = await client.get("/health")
+        assert response.status_code == 200
+        data = response.json()
+        assert data["status"] == "HEALTHY"
+        assert "SkyGuard" in data["service"]
+
+
+@pytest.mark.asyncio
+async def test_health_with_providers():
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as client:
         response = await client.get("/api/health")
@@ -15,13 +26,28 @@ async def test_health_endpoint():
         assert "open_meteo" in data["upstream_providers"]
 
 
+@pytest.mark.live
 @pytest.mark.asyncio
-async def test_imd_alerts_unauthenticated_status():
+async def test_api_v1_locations_endpoint():
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as client:
-        response = await client.get("/api/v1/alerts/imd?district=Warangal&state=Telangana")
+        response = await client.get("/api/v1/locations?q=Warangal&count=5&country_code=IN")
         assert response.status_code == 200
         data = response.json()
-        assert data["provider_status"] == "NOT_CONFIGURED"
-        assert "unavailability_reason" in data
-        assert "setup_instructions" in data
+        assert data["count"] > 0
+        assert data["provenance"]["provider"] == "Open-Meteo Geocoding API"
+
+
+@pytest.mark.live
+@pytest.mark.asyncio
+async def test_api_v1_weather_endpoint():
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as client:
+        response = await client.get("/api/v1/weather?latitude=17.9784&longitude=79.6005")
+        assert response.status_code == 200
+        data = response.json()
+        assert data["requested_latitude"] == 17.9784
+        assert data["requested_longitude"] == 79.6005
+        assert len(data["daily"]) == 7
+        assert "temperature" in data["units"]
+        assert data["provenance"]["provider"] == "Open-Meteo"

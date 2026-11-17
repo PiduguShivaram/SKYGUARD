@@ -6,18 +6,19 @@ import { HourlyForecastPoint } from "@/types";
 
 interface HourlyChartProps {
   hourly: HourlyForecastPoint[];
+  units: Record<string, string>;
 }
 
-export const HourlyChart: React.FC<HourlyChartProps> = ({ hourly }) => {
+export const HourlyChart: React.FC<HourlyChartProps> = ({ hourly, units }) => {
   const [hoverIndex, setHoverIndex] = useState<number | null>(null);
 
-  // Take the upcoming 24 hours of live forecast data
+  const tempUnit = units.temperature || "°C";
   const data = hourly.slice(0, 24);
 
   if (!data || data.length === 0) {
     return (
-      <div className="p-6 bg-slate-800/80 rounded-2xl border border-slate-700 text-center text-slate-400 text-sm">
-        Hourly forecast data unavailable from provider.
+      <div className="p-6 bg-slate-800/80 rounded-2xl border border-slate-700 text-center text-slate-400 text-xs">
+        Hourly numerical forecast data unavailable.
       </div>
     );
   }
@@ -48,7 +49,6 @@ export const HourlyChart: React.FC<HourlyChartProps> = ({ hourly }) => {
   const pathD = points.reduce((acc, curr, idx) => {
     if (idx === 0) return `M ${curr.x} ${curr.y}`;
     const prev = points[idx - 1];
-    // Smooth bezier curve
     const cx = (prev.x + curr.x) / 2;
     return `${acc} C ${cx} ${prev.y}, ${cx} ${curr.y}, ${curr.x} ${curr.y}`;
   }, "");
@@ -64,10 +64,10 @@ export const HourlyChart: React.FC<HourlyChartProps> = ({ hourly }) => {
         <div>
           <h3 className="text-base font-bold text-white flex items-center gap-2">
             <Clock className="w-4 h-4 text-blue-400" />
-            <span>24-Hour Forecast Trend (Authentic NWP)</span>
+            <span>24-Hour Temperature &amp; Rain Outlook</span>
           </h3>
           <p className="text-xs text-slate-400">
-            Air temperature (°C) and precipitation chance (%) directly from Open-Meteo
+            Air temperature ({tempUnit}) and precipitation chance (%) directly from Open-Meteo
           </p>
         </div>
 
@@ -78,9 +78,9 @@ export const HourlyChart: React.FC<HourlyChartProps> = ({ hourly }) => {
             </span>
             <span className="text-amber-400 font-bold flex items-center gap-1">
               <Thermometer className="w-3 h-3" />
-              {activePoint.data.temperature_2m.toFixed(1)}°C
+              {activePoint.data.temperature_2m.toFixed(1)} {tempUnit}
             </span>
-            {activePoint.data.precipitation_probability !== undefined && (
+            {activePoint.data.precipitation_probability !== undefined && activePoint.data.precipitation_probability !== null && (
               <span className="text-blue-400 font-bold flex items-center gap-1">
                 <Droplets className="w-3 h-3" />
                 {activePoint.data.precipitation_probability}%
@@ -99,8 +99,7 @@ export const HourlyChart: React.FC<HourlyChartProps> = ({ hourly }) => {
             onMouseLeave={() => setHoverIndex(null)}
           >
             <defs>
-              {/* Gradient for Temperature Area */}
-              <linearGradient id="tempGradient" x1="0" y1="0" x2="0" y2="1">
+              <linearGradient id="hourlyTempGrad" x1="0" y1="0" x2="0" y2="1">
                 <stop offset="0%" stopColor="#3B82F6" stopOpacity="0.4" />
                 <stop offset="100%" stopColor="#3B82F6" stopOpacity="0.0" />
               </linearGradient>
@@ -136,7 +135,7 @@ export const HourlyChart: React.FC<HourlyChartProps> = ({ hourly }) => {
             })}
 
             {/* Area Fill */}
-            <path d={areaD} fill="url(#tempGradient)" />
+            <path d={areaD} fill="url(#hourlyTempGrad)" />
 
             {/* Temperature Curve Line */}
             <path
@@ -147,13 +146,13 @@ export const HourlyChart: React.FC<HourlyChartProps> = ({ hourly }) => {
               strokeLinecap="round"
             />
 
-            {/* Precipitation probability vertical bars along the bottom */}
+            {/* Precipitation probability bars */}
             {points.map((p, idx) => {
               const prob = p.data.precipitation_probability ?? 0;
               const barHeight = (prob / 100) * 35;
               const barY = svgHeight - paddingBottom - barHeight;
               return (
-                <g key={`bar-${idx}`}>
+                <g key={`prob-bar-${idx}`}>
                   {prob > 5 && (
                     <rect
                       x={p.x - 3}
@@ -169,14 +168,13 @@ export const HourlyChart: React.FC<HourlyChartProps> = ({ hourly }) => {
               );
             })}
 
-            {/* Interactive Data Points & Hover Targets */}
+            {/* Interactive Data Points */}
             {points.map((p, idx) => (
               <g
-                key={`point-${idx}`}
+                key={`h-point-${idx}`}
                 className="cursor-pointer"
                 onMouseEnter={() => setHoverIndex(idx)}
               >
-                {/* Invisible wide hit area */}
                 <rect
                   x={p.x - 12}
                   y={0}
@@ -185,7 +183,6 @@ export const HourlyChart: React.FC<HourlyChartProps> = ({ hourly }) => {
                   fill="transparent"
                 />
 
-                {/* Point dot (highlighted on hover or every 3 hours) */}
                 {(hoverIndex === idx || idx % 4 === 0) && (
                   <circle
                     cx={p.x}
@@ -197,7 +194,6 @@ export const HourlyChart: React.FC<HourlyChartProps> = ({ hourly }) => {
                   />
                 )}
 
-                {/* X-axis time label (every 3 hours) */}
                 {idx % 3 === 0 && (
                   <text
                     x={p.x}

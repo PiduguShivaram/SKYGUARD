@@ -12,9 +12,11 @@ export interface LocationSearchResult {
   latitude: number;
   longitude: number;
   elevation?: number;
+  country_code?: string;
   country?: string;
   admin1?: string;
   admin2?: string;
+  timezone?: string;
   formatted_label: string;
 }
 
@@ -65,11 +67,15 @@ export interface DailyForecastPoint {
 }
 
 export interface WeatherForecastResponse {
+  requested_latitude: number;
+  requested_longitude: number;
   latitude: number;
   longitude: number;
   elevation?: number;
   timezone: string;
   timezone_abbreviation?: string;
+  utc_offset_seconds?: number;
+  units: Record<string, string>;
   current: CurrentWeather;
   hourly: HourlyForecastPoint[];
   daily: DailyForecastPoint[];

@@ -6,217 +6,163 @@ import { LocationSearchBar } from "@/components/LocationSearchBar";
 import { CurrentWeatherCard } from "@/components/CurrentWeatherCard";
 import { HourlyChart } from "@/components/HourlyChart";
 import { DailyForecastList } from "@/components/DailyForecastList";
-import { OfficialAlertsCard } from "@/components/OfficialAlertsCard";
-import { DerivedRiskCard } from "@/components/DerivedRiskCard";
-import { FarmerModePanel } from "@/components/FarmerModePanel";
 import { ProvenanceFooter } from "@/components/ProvenanceFooter";
 import { ErrorState } from "@/components/ErrorState";
-import {
-  checkBackendHealth,
-  evaluateRisks,
-  getForecast,
-  getOfficialAlerts,
-} from "@/lib/api";
-import {
-  LocationSearchResult,
-  OfficialAlertResponse,
-  RiskEvaluationResponse,
-  WeatherForecastResponse,
-} from "@/types";
-import { MapPin, Sparkles, Navigation } from "lucide-react";
+import { checkBackendHealth, getForecast } from "@/lib/api";
+import { LocationSearchResult, WeatherForecastResponse } from "@/types";
+import { MapPin, Search, CloudSun, RefreshCw } from "lucide-react";
 
-const SUGGESTED_LOCATIONS = [
-  { name: "Warangal", admin1: "Telangana", country: "India", lat: 17.9784, lon: 79.6005 },
-  { name: "Hyderabad", admin1: "Telangana", country: "India", lat: 17.3850, lon: 78.4867 },
-  { name: "New Delhi", admin1: "Delhi", country: "India", lat: 28.6139, lon: 77.2090 },
-  { name: "Mumbai", admin1: "Maharashtra", country: "India", lat: 19.0760, lon: 72.8777 },
-  { name: "Bengaluru", admin1: "Karnataka", country: "India", lat: 12.9716, lon: 77.5946 },
+const SUGGESTED_CITIES = [
+  { name: "Warangal", label: "Warangal, Telangana, India", lat: 17.9784, lon: 79.6005 },
+  { name: "Hyderabad", label: "Hyderabad, Telangana, India", lat: 17.3850, lon: 78.4867 },
+  { name: "New Delhi", label: "New Delhi, Delhi, India", lat: 28.6139, lon: 77.2090 },
+  { name: "Bengaluru", label: "Bengaluru, Karnataka, India", lat: 12.9716, lon: 77.5946 },
+  { name: "Mumbai", label: "Mumbai, Maharashtra, India", lat: 19.0760, lon: 72.8777 },
 ];
 
-export default function HomePage() {
-  const [mode, setMode] = useState<"public" | "farmer">("public");
+export default function PublicWeatherPage() {
   const [upstreamStatus, setUpstreamStatus] = useState<string>("CHECKING");
-  const [currentLabel, setCurrentLabel] = useState<string>("");
-  const [selectedCoords, setSelectedCoords] = useState<{ lat: number; lon: number; district?: string; state?: string } | null>(null);
-
+  const [selectedLocation, setSelectedLocation] = useState<LocationSearchResult | null>(null);
   const [weatherData, setWeatherData] = useState<WeatherForecastResponse | null>(null);
-  const [alertsData, setAlertsData] = useState<OfficialAlertResponse | null>(null);
-  const [riskData, setRiskData] = useState<RiskEvaluationResponse | null>(null);
-
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Initial Health Check
+  // Check backend server health on mount
   useEffect(() => {
     checkBackendHealth()
       .then((data) => {
-        setUpstreamStatus(data.upstream_providers.open_meteo || "REACHABLE");
+        setUpstreamStatus(data.status === "HEALTHY" ? "HEALTHY" : "DEGRADED");
       })
       .catch(() => {
         setUpstreamStatus("UNREACHABLE");
       });
   }, []);
 
-  // Fetch all live data when coordinates change
-  const fetchLiveData = useCallback(async (lat: number, lon: number, label: string, district?: string, state?: string) => {
+  // Fetch forecast for chosen coordinates
+  const fetchWeather = useCallback(async (lat: number, lon: number, label: string) => {
     setLoading(true);
     setError(null);
-    setCurrentLabel(label);
-
     try {
-      // 1. Fetch live Open-Meteo forecast
       const forecast = await getForecast(lat, lon);
       setWeatherData(forecast);
-
-      // 2. Fetch official alerts status from IMD
-      const alerts = await getOfficialAlerts(district, state, label);
-      setAlertsData(alerts);
-
-      // 3. Evaluate derived risk engine
-      if (forecast.daily && forecast.daily.length > 0) {
-        const risks = await evaluateRisks(forecast.daily);
-        setRiskData(risks);
-      }
     } catch (err: any) {
-      console.error("Live weather data retrieval failed:", err);
-      setError(err.message || "Failed to retrieve live atmospheric conditions.");
+      console.error("Weather forecast retrieval error:", err);
+      setError(err.message || "Failed to retrieve forecast from Open-Meteo.");
       setWeatherData(null);
-      setAlertsData(null);
-      setRiskData(null);
     } finally {
       setLoading(false);
     }
   }, []);
 
-  const handleLocationSelect = (loc: LocationSearchResult) => {
-    setSelectedCoords({ lat: loc.latitude, lon: loc.longitude, district: loc.admin2 || loc.name, state: loc.admin1 });
-    fetchLiveData(loc.latitude, loc.longitude, loc.formatted_label, loc.admin2 || loc.name, loc.admin1);
+  const handleSelectLocation = (loc: LocationSearchResult) => {
+    setSelectedLocation(loc);
+    fetchWeather(loc.latitude, loc.longitude, loc.formatted_label);
   };
 
-  const handleGeolocationSelect = (lat: number, lon: number, label: string) => {
-    setSelectedCoords({ lat, lon });
-    fetchLiveData(lat, lon, label);
+  const handleSelectQuickCity = (city: typeof SUGGESTED_CITIES[0]) => {
+    const loc: LocationSearchResult = {
+      id: Math.floor(Math.random() * 100000),
+      name: city.name,
+      latitude: city.lat,
+      longitude: city.lon,
+      formatted_label: city.label,
+    };
+    setSelectedLocation(loc);
+    fetchWeather(city.lat, city.lon, city.label);
   };
 
   return (
-    <div className="min-h-screen flex flex-col bg-slate-950 text-slate-100">
-      {/* Top Navigation */}
-      <Header
-        mode={mode}
-        onModeChange={setMode}
-        upstreamStatus={upstreamStatus}
-      />
+    <div className="min-h-screen flex flex-col bg-slate-950 text-slate-100 font-sans">
+      {/* Header */}
+      <Header upstreamStatus={upstreamStatus} />
 
       {/* Main Content Area */}
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
-        {/* Search & Location Bar */}
+        {/* Search Bar & Location Selection */}
         <div className="space-y-3">
           <LocationSearchBar
-            onLocationSelect={handleLocationSelect}
-            onGeolocationSelect={handleGeolocationSelect}
-            currentLabel={currentLabel}
+            onLocationSelect={handleSelectLocation}
+            selectedLocation={selectedLocation}
           />
 
-          {/* Quick-select location chips (Real Live Queries) */}
+          {/* Location Quick Chips */}
           <div className="flex items-center gap-2 overflow-x-auto pb-1 text-xs text-slate-400">
             <span className="shrink-0 flex items-center gap-1 font-medium text-slate-500">
-              <MapPin className="w-3.5 h-3.5" /> Quick locations:
+              <MapPin className="w-3.5 h-3.5" /> Popular Indian Cities:
             </span>
-            {SUGGESTED_LOCATIONS.map((loc) => (
+            {SUGGESTED_CITIES.map((c) => (
               <button
-                key={loc.name}
-                onClick={() => {
-                  setSelectedCoords({ lat: loc.lat, lon: loc.lon, district: loc.name, state: loc.admin1 });
-                  fetchLiveData(loc.lat, loc.lon, `${loc.name}, ${loc.admin1}, ${loc.country}`, loc.name, loc.admin1);
-                }}
+                key={c.name}
+                onClick={() => handleSelectQuickCity(c)}
                 className={`shrink-0 px-2.5 py-1 rounded-lg border transition-all ${
-                  currentLabel.startsWith(loc.name)
-                    ? "bg-blue-600/30 border-blue-500 text-blue-200 font-semibold"
+                  selectedLocation?.name === c.name
+                    ? "bg-blue-600/30 border-blue-500 text-blue-200 font-semibold shadow-sm"
                     : "bg-slate-900 border-slate-800 text-slate-400 hover:text-white hover:border-slate-700"
                 }`}
               >
-                {loc.name}
+                {c.name}
               </button>
             ))}
           </div>
         </div>
 
-        {/* Error Notification */}
+        {/* Error State with Retry */}
         {error && (
           <ErrorState
+            title="Open-Meteo Provider Unreachable"
             message={error}
             onRetry={() => {
-              if (selectedCoords) {
-                fetchLiveData(selectedCoords.lat, selectedCoords.lon, currentLabel, selectedCoords.district, selectedCoords.state);
+              if (selectedLocation) {
+                fetchWeather(selectedLocation.latitude, selectedLocation.longitude, selectedLocation.formatted_label);
               }
             }}
           />
         )}
 
         {/* Initial Prompt State (No location selected yet) */}
-        {!loading && !weatherData && !error && (
+        {!selectedLocation && !loading && !error && (
           <div className="p-12 text-center rounded-2xl bg-slate-900/60 border border-slate-800 max-w-xl mx-auto shadow-2xl space-y-4">
             <div className="w-14 h-14 rounded-2xl bg-blue-500/10 border border-blue-500/20 text-blue-400 flex items-center justify-center mx-auto">
-              <Sparkles className="w-7 h-7" />
+              <CloudSun className="w-7 h-7" />
             </div>
             <h2 className="text-xl font-bold text-white tracking-tight">
               Ready for Real-time Weather Intelligence
             </h2>
             <p className="text-xs text-slate-400 leading-relaxed max-w-md mx-auto">
-              Search any city or district above, opt-in with device geolocation, or choose a quick location to fetch authentic Numerical Weather Prediction forecasts and official alerts.
+              Please search for a city or town above or select a popular city to query genuine Open-Meteo numerical weather prediction forecasts.
             </p>
           </div>
         )}
 
-        {/* Loading Skeleton */}
+        {/* Loading Skeletons */}
         {loading && (
           <div className="space-y-6 animate-pulse">
-            <div className="h-48 bg-slate-900/80 rounded-2xl border border-slate-800"></div>
+            <div className="h-56 bg-slate-900/80 rounded-2xl border border-slate-800"></div>
             <div className="h-64 bg-slate-900/80 rounded-2xl border border-slate-800"></div>
+            <div className="h-80 bg-slate-900/80 rounded-2xl border border-slate-800"></div>
           </div>
         )}
 
-        {/* Live Weather & Risk Presentation */}
+        {/* Live Weather Forecast Display */}
         {weatherData && !loading && (
           <div className="space-y-6">
-            {/* Current Weather Hero Card */}
+            {/* Current Conditions Hero Card */}
             <CurrentWeatherCard
-              current={weatherData.current}
-              locationLabel={currentLabel}
-              latitude={weatherData.latitude}
-              longitude={weatherData.longitude}
-              elevation={weatherData.elevation}
-              timezone={weatherData.timezone}
+              weather={weatherData}
+              locationLabel={selectedLocation?.formatted_label || "Selected Coordinates"}
             />
 
-            {/* Official Alerts Card (IMD / NDMA) */}
-            <OfficialAlertsCard alertsData={alertsData} loading={loading} />
+            {/* 24-Hour Hourly Trend Curve */}
+            <HourlyChart hourly={weatherData.hourly} units={weatherData.units} />
 
-            {/* 24-Hour Authentic Hourly Forecast Trend */}
-            <HourlyChart hourly={weatherData.hourly} />
-
-            {/* Grid: 7-Day Outlook and Derived Risk */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              {/* 7-Day Daily Outlook */}
-              <DailyForecastList daily={weatherData.daily} />
-
-              {/* Derived Risk Indicators */}
-              <DerivedRiskCard riskData={riskData} loading={loading} />
-            </div>
-
-            {/* Farmer Mode Panel (Rendered only when Farmer Mode is active) */}
-            {mode === "farmer" && (
-              <FarmerModePanel daily={weatherData.daily} />
-            )}
+            {/* Seven-Day Daily Summary */}
+            <DailyForecastList daily={weatherData.daily} units={weatherData.units} />
           </div>
         )}
       </main>
 
-      {/* Transparent Provenance Footer */}
-      <ProvenanceFooter
-        provenance={weatherData?.provenance || null}
-        timezone={weatherData?.timezone}
-      />
+      {/* Provenance & Transparency Footer */}
+      <ProvenanceFooter weather={weatherData} />
     </div>
   );
 }

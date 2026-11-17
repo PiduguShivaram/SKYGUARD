@@ -1,11 +1,11 @@
 """Weather forecast schemas for current, hourly, and daily series."""
-from typing import List, Optional
+from typing import Dict, List, Optional
 from pydantic import BaseModel, Field
 from services.api.app.schemas.common import Provenance
 
 
 class CurrentWeather(BaseModel):
-    time: str = Field(..., description="Observation / forecast timestamp")
+    time: str = Field(..., description="Observation / forecast timestamp (provider valid time)")
     temperature_2m: float = Field(..., description="Current temperature at 2m in Celsius")
     relative_humidity_2m: float = Field(..., description="Relative humidity percentage")
     apparent_temperature: float = Field(..., description="Apparent / 'feels like' temperature in Celsius")
@@ -44,11 +44,15 @@ class DailyForecastPoint(BaseModel):
 
 
 class WeatherForecastResponse(BaseModel):
-    latitude: float
-    longitude: float
+    requested_latitude: float = Field(..., description="Coordinates requested by client")
+    requested_longitude: float = Field(..., description="Coordinates requested by client")
+    latitude: float = Field(..., description="Actual Open-Meteo grid latitude returned")
+    longitude: float = Field(..., description="Actual Open-Meteo grid longitude returned")
     elevation: Optional[float] = None
     timezone: str
     timezone_abbreviation: Optional[str] = None
+    utc_offset_seconds: Optional[int] = None
+    units: Dict[str, str] = Field(default_factory=dict, description="Units reported by Open-Meteo")
     current: CurrentWeather
     hourly: List[HourlyForecastPoint]
     daily: List[DailyForecastPoint]

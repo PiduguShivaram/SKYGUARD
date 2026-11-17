@@ -1,45 +1,51 @@
 "use client";
 
 import React, { useState, useEffect, useRef } from "react";
-import { Search, MapPin, Loader2, Navigation, AlertCircle } from "lucide-react";
+import { Search, MapPin, Loader2, AlertCircle, Compass } from "lucide-react";
 import { searchLocations } from "@/lib/api";
 import { LocationSearchResult } from "@/types";
 
 interface LocationSearchBarProps {
   onLocationSelect: (location: LocationSearchResult) => void;
-  onGeolocationSelect: (lat: number, lon: number, label: string) => void;
-  currentLabel: string;
+  selectedLocation: LocationSearchResult | null;
 }
 
 export const LocationSearchBar: React.FC<LocationSearchBarProps> = ({
   onLocationSelect,
-  onGeolocationSelect,
-  currentLabel,
+  selectedLocation,
 }) => {
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<LocationSearchResult[]>([]);
   const [loading, setLoading] = useState(false);
+  const [hasSearched, setHasSearched] = useState(false);
+  const [searchError, setSearchError] = useState<string | null>(null);
   const [isOpen, setIsOpen] = useState(false);
-  const [geoError, setGeoError] = useState<string | null>(null);
-  const [isLocating, setIsLocating] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
-  // Debounced search
+  // Debounced search against real Open-Meteo Geocoding
   useEffect(() => {
-    if (query.trim().length < 2) {
+    const trimmed = query.trim();
+    if (trimmed.length < 2) {
       setResults([]);
       setIsOpen(false);
+      setHasSearched(false);
+      setSearchError(null);
       return;
     }
 
     const timer = setTimeout(async () => {
       setLoading(true);
+      setSearchError(null);
       try {
-        const data = await searchLocations(query);
+        const data = await searchLocations(trimmed);
         setResults(data);
-        setIsOpen(data.length > 0);
-      } catch (err) {
-        console.error("Geocoding lookup failed:", err);
+        setHasSearched(true);
+        setIsOpen(true);
+      } catch (err: any) {
+        console.error("Geocoding lookup error:", err);
+        setSearchError(err.message || "Failed to query geocoding provider.");
+        setResults([]);
+        setIsOpen(true);
       } finally {
         setLoading(false);
       }
@@ -48,7 +54,7 @@ export const LocationSearchBar: React.FC<LocationSearchBarProps> = ({
     return () => clearTimeout(timer);
   }, [query]);
 
-  // Click outside listener
+  // Click outside to dismiss dropdown
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
@@ -65,112 +71,89 @@ export const LocationSearchBar: React.FC<LocationSearchBarProps> = ({
     setIsOpen(false);
   };
 
-  const handleUseLocation = () => {
-    if (!navigator.geolocation) {
-      setGeoError("Geolocation is not supported by your browser.");
-      return;
-    }
-
-    setIsLocating(true);
-    setGeoError(null);
-
-    navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        setIsLocating(false);
-        const lat = pos.coords.latitude;
-        const lon = pos.coords.longitude;
-        onGeolocationSelect(lat, lon, `My Location (${lat.toFixed(3)}°, ${lon.toFixed(3)}°)`);
-      },
-      (err) => {
-        setIsLocating(false);
-        switch (err.code) {
-          case err.PERMISSION_DENIED:
-            setGeoError("Location permission denied. Please search your city manually.");
-            break;
-          case err.POSITION_UNAVAILABLE:
-            setGeoError("Position unavailable. Please search by name.");
-            break;
-          case err.TIMEOUT:
-            setGeoError("Location request timed out.");
-            break;
-          default:
-            setGeoError("Could not retrieve location.");
-            break;
-        }
-      },
-      { timeout: 10000, enableHighAccuracy: true }
-    );
-  };
-
   return (
     <div className="w-full relative" ref={dropdownRef}>
-      <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
-        {/* Search Input */}
-        <div className="relative flex-1">
-          <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
-            {loading ? (
-              <Loader2 className="w-4 h-4 animate-spin text-blue-400" />
-            ) : (
-              <Search className="w-4 h-4" />
-            )}
-          </div>
-          <input
-            type="text"
-            className="w-full pl-10 pr-4 py-2.5 bg-slate-800/90 border border-slate-700 rounded-xl text-sm text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all shadow-inner"
-            placeholder={currentLabel ? `Location: ${currentLabel}` : "Search city, town, or district..."}
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            onFocus={() => results.length > 0 && setIsOpen(true)}
-            aria-label="Search location"
-          />
-        </div>
-
-        {/* Opt-in Geolocation Button */}
-        <button
-          onClick={handleUseLocation}
-          disabled={isLocating}
-          className="flex items-center justify-center gap-2 px-4 py-2.5 bg-slate-800/90 hover:bg-slate-750 active:bg-slate-700 border border-slate-700 text-slate-200 hover:text-white rounded-xl text-sm font-medium transition-all shadow-sm"
-          title="Opt-in to use device location"
-        >
-          {isLocating ? (
+      <label htmlFor="location-search" className="block text-xs font-semibold text-slate-300 mb-1.5">
+        Search Location (City, Town, or District)
+      </label>
+      <div className="relative">
+        <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+          {loading ? (
             <Loader2 className="w-4 h-4 animate-spin text-blue-400" />
           ) : (
-            <Navigation className="w-4 h-4 text-blue-400" />
+            <Search className="w-4 h-4" />
           )}
-          <span className="whitespace-nowrap">Locate Me</span>
-        </button>
+        </div>
+        <input
+          id="location-search"
+          type="text"
+          className="w-full pl-10 pr-4 py-3 bg-slate-800/90 border border-slate-700 rounded-xl text-sm text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all shadow-inner"
+          placeholder={
+            selectedLocation
+              ? `Current location: ${selectedLocation.formatted_label}`
+              : "Type at least 2 characters (e.g. Warangal, Hyderabad, Delhi)..."
+          }
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          onFocus={() => (results.length > 0 || hasSearched || searchError) && setIsOpen(true)}
+          autoComplete="off"
+        />
       </div>
 
-      {/* Geolocation error notification */}
-      {geoError && (
-        <div className="mt-2 p-2.5 bg-amber-500/10 border border-amber-500/20 rounded-lg flex items-center gap-2 text-xs text-amber-300">
-          <AlertCircle className="w-4 h-4 shrink-0 text-amber-400" />
-          <span>{geoError}</span>
-        </div>
-      )}
-
-      {/* Autocomplete Dropdown */}
+      {/* Autocomplete / Results Dropdown */}
       {isOpen && (
-        <div className="absolute top-full left-0 right-0 mt-1.5 z-50 bg-slate-800 border border-slate-700 rounded-xl shadow-2xl overflow-hidden max-h-72 overflow-y-auto">
-          <div className="px-3 py-1.5 text-[11px] font-semibold text-slate-400 border-b border-slate-700/60 uppercase tracking-wider">
-            Matching Locations (Open-Meteo Gazetteer)
+        <div className="absolute top-full left-0 right-0 mt-1.5 z-50 bg-slate-800 border border-slate-700 rounded-xl shadow-2xl overflow-hidden max-h-80 overflow-y-auto">
+          {/* Header */}
+          <div className="px-3 py-2 text-[11px] font-semibold text-slate-400 border-b border-slate-700/60 uppercase tracking-wider flex items-center justify-between">
+            <span>Matching Places (Open-Meteo Geocoding)</span>
+            {loading && <span className="text-blue-400 normal-case font-normal">Searching...</span>}
           </div>
-          {results.map((item) => (
-            <button
-              key={`${item.id}-${item.latitude}-${item.longitude}`}
-              onClick={() => handleSelect(item)}
-              className="w-full px-4 py-2.5 text-left flex items-start gap-3 hover:bg-slate-700/70 border-b border-slate-700/30 last:border-0 transition-colors"
-            >
-              <MapPin className="w-4 h-4 text-blue-400 shrink-0 mt-0.5" />
-              <div>
-                <p className="text-sm font-medium text-white">{item.formatted_label}</p>
-                <p className="text-xs text-slate-400">
-                  Coordinates: {item.latitude.toFixed(3)}°, {item.longitude.toFixed(3)}°
-                  {item.elevation ? ` · Elevation: ${item.elevation}m` : ""}
-                </p>
-              </div>
-            </button>
-          ))}
+
+          {/* Loading state inside dropdown */}
+          {loading && results.length === 0 && (
+            <div className="p-4 text-center text-xs text-slate-400 flex items-center justify-center gap-2">
+              <Loader2 className="w-4 h-4 animate-spin text-blue-400" />
+              <span>Querying Open-Meteo gazetteer...</span>
+            </div>
+          )}
+
+          {/* Error State */}
+          {searchError && (
+            <div className="p-4 text-xs text-rose-300 bg-rose-950/20 flex items-center gap-2">
+              <AlertCircle className="w-4 h-4 text-rose-400 shrink-0" />
+              <span>Geocoding unavailable: {searchError}</span>
+            </div>
+          )}
+
+          {/* No match state */}
+          {!loading && !searchError && hasSearched && results.length === 0 && (
+            <div className="p-5 text-center text-xs text-slate-400">
+              <p className="font-medium text-slate-300">No matching locations found for &quot;{query}&quot;</p>
+              <p className="text-[11px] text-slate-500 mt-1">
+                Please check the spelling or search for a nearby major town or district.
+              </p>
+            </div>
+          )}
+
+          {/* Multiple Geo Results List */}
+          {!loading &&
+            results.map((item) => (
+              <button
+                key={`${item.id}-${item.latitude}-${item.longitude}`}
+                onClick={() => handleSelect(item)}
+                className="w-full px-4 py-3 text-left flex items-start gap-3 hover:bg-slate-700/70 border-b border-slate-700/30 last:border-0 transition-colors focus:bg-slate-700/80 focus:outline-none"
+              >
+                <MapPin className="w-4 h-4 text-blue-400 shrink-0 mt-0.5" />
+                <div className="flex-1">
+                  <p className="text-sm font-semibold text-white">{item.formatted_label}</p>
+                  <p className="text-xs text-slate-400 font-mono mt-0.5">
+                    Exact coordinates: {item.latitude.toFixed(4)}°N, {item.longitude.toFixed(4)}°E
+                    {item.elevation !== undefined && item.elevation !== null ? ` · Elevation: ${item.elevation}m` : ""}
+                    {item.country_code ? ` · Country: ${item.country_code}` : ""}
+                  </p>
+                </div>
+              </button>
+            ))}
         </div>
       )}
     </div>

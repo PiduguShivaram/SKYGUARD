@@ -3,16 +3,22 @@ import {
   FarmerWatchResponse,
   GeocodingResponse,
   LocationSearchResult,
-  OfficialAlertResponse,
   RiskEvaluationResponse,
   WeatherForecastResponse,
 } from "@/types";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
 
-export async function searchLocations(query: string): Promise<LocationSearchResult[]> {
+export async function searchLocations(query: string, countryCode?: string): Promise<LocationSearchResult[]> {
   if (!query || query.trim().length < 2) return [];
-  const res = await fetch(`${API_BASE}/api/v1/geo/search?q=${encodeURIComponent(query.trim())}`);
+  const params = new URLSearchParams({
+    q: query.trim(),
+    count: "5",
+  });
+  if (countryCode) {
+    params.append("country_code", countryCode);
+  }
+  const res = await fetch(`${API_BASE}/api/v1/locations?${params.toString()}`);
   if (!res.ok) {
     const errorBody = await res.json().catch(() => ({}));
     throw new Error(errorBody.detail || `Geocoding request failed (${res.status})`);
@@ -22,7 +28,7 @@ export async function searchLocations(query: string): Promise<LocationSearchResu
 }
 
 export async function getForecast(latitude: number, longitude: number): Promise<WeatherForecastResponse> {
-  const res = await fetch(`${API_BASE}/api/v1/weather/forecast?latitude=${latitude}&longitude=${longitude}`);
+  const res = await fetch(`${API_BASE}/api/v1/weather?latitude=${latitude}&longitude=${longitude}`);
   if (!res.ok) {
     const errorBody = await res.json().catch(() => ({}));
     throw new Error(errorBody.detail || `Weather forecast query failed (${res.status})`);
@@ -30,20 +36,9 @@ export async function getForecast(latitude: number, longitude: number): Promise<
   return res.json();
 }
 
-export async function getOfficialAlerts(
-  district?: string,
-  state?: string,
-  locationLabel: string = "Selected Location"
-): Promise<OfficialAlertResponse> {
-  const params = new URLSearchParams({ location_label: locationLabel });
-  if (district) params.append("district", district);
-  if (state) params.append("state", state);
-
-  const res = await fetch(`${API_BASE}/api/v1/alerts/imd?${params.toString()}`);
-  if (!res.ok) {
-    const errorBody = await res.json().catch(() => ({}));
-    throw new Error(errorBody.detail || `Official alerts query failed (${res.status})`);
-  }
+export async function checkBackendHealth(): Promise<{ status: string; service: string; version: string }> {
+  const res = await fetch(`${API_BASE}/health`);
+  if (!res.ok) throw new Error("Backend unhealthy");
   return res.json();
 }
 
@@ -78,11 +73,5 @@ export async function getFarmerWatches(
     const errorBody = await res.json().catch(() => ({}));
     throw new Error(errorBody.detail || `Farmer watches query failed (${res.status})`);
   }
-  return res.json();
-}
-
-export async function checkBackendHealth(): Promise<{ status: string; upstream_providers: Record<string, string> }> {
-  const res = await fetch(`${API_BASE}/api/health`);
-  if (!res.ok) throw new Error("Backend unhealthy");
   return res.json();
 }
