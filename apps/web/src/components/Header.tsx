@@ -1,18 +1,22 @@
 "use client";
 
 import React from "react";
-import { Shield, Sprout, User } from "lucide-react";
+import { Shield, Sprout, User, Bell } from "lucide-react";
 
 interface HeaderProps {
   upstreamStatus: string;
   currentMode: "public" | "farmer";
   onModeChange: (mode: "public" | "farmer") => void;
+  onOpenNotifications?: () => void;
+  notificationsActive?: boolean;
 }
 
 export const Header: React.FC<HeaderProps> = ({
   upstreamStatus,
   currentMode,
   onModeChange,
+  onOpenNotifications,
+  notificationsActive,
 }) => {
   return (
     <header className="sticky top-0 z-40 w-full backdrop-blur-md bg-slate-900/90 border-b border-slate-800">
@@ -35,8 +39,8 @@ export const Header: React.FC<HeaderProps> = ({
           </div>
         </div>
 
-        {/* Center / Right Mode Selector & Status */}
-        <div className="flex items-center gap-3">
+        {/* Center / Right Mode Selector, Push Button & Status */}
+        <div className="flex items-center gap-2 sm:gap-3">
           {/* Mode Switcher */}
           <div className="flex items-center bg-slate-950 p-1 rounded-xl border border-slate-800">
             <button
@@ -64,8 +68,24 @@ export const Header: React.FC<HeaderProps> = ({
             </button>
           </div>
 
+          {/* Web Push Alerts Bell */}
+          <button
+            onClick={onOpenNotifications}
+            className={`relative p-2 rounded-xl border transition-all flex items-center justify-center ${
+              notificationsActive
+                ? "bg-blue-600/20 border-blue-500 text-blue-300 shadow-sm"
+                : "bg-slate-900 border-slate-800 text-slate-400 hover:text-white hover:border-slate-750"
+            }`}
+            title="Global Push Notification Settings"
+          >
+            <Bell className="w-4 h-4" />
+            {notificationsActive && (
+              <span className="absolute top-1 right-1 w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+            )}
+          </button>
+
           {/* Upstream Provider Pulse */}
-          <div className="hidden md:flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs bg-slate-800/90 border border-slate-700 text-slate-300">
+          <div className="hidden lg:flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs bg-slate-800/90 border border-slate-700 text-slate-300">
             <span
               className={`w-2 h-2 rounded-full ${
                 upstreamStatus === "HEALTHY" || upstreamStatus === "REACHABLE"

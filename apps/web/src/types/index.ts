@@ -193,3 +193,65 @@ export interface OfficialAlertResponse {
   setup_instructions?: string;
   provenance: Provenance;
 }
+
+// Web Push Notifications & Subscriptions (Phase 3)
+export type PushPermissionStatus = "default" | "granted" | "denied" | "unsupported";
+
+export interface PushSubscribePayload {
+  endpoint: string;
+  keys: {
+    p256dh: string;
+    auth: string;
+  };
+  country_code?: string;
+  latitude?: number;
+  longitude?: number;
+  radius_km?: number;
+  categories?: AlertCategory[];
+  min_severity?: AlertSeverity;
+}
+
+export interface PushSubscribeResponse {
+  subscription_id: string;
+  possession_token: string;
+  endpoint: string;
+  categories: AlertCategory[];
+  min_severity: AlertSeverity;
+  country_code?: string;
+  latitude?: number;
+  longitude?: number;
+  radius_km: number;
+  created_at: string;
+}
+
+export interface PushPreferencesResponse {
+  subscription_id: string;
+  endpoint: string;
+  categories: AlertCategory[];
+  min_severity: AlertSeverity;
+  country_code?: string;
+  latitude?: number;
+  longitude?: number;
+  radius_km: number;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface PushPreferencesUpdateRequest {
+  categories?: AlertCategory[];
+  min_severity?: AlertSeverity;
+  country_code?: string;
+  latitude?: number;
+  longitude?: number;
+  radius_km?: number;
+  is_active?: boolean;
+}
+
+export interface DiagnosticPushTestResponse {
+  status: string;
+  message: string;
+  tag: string;
+  delivered_at: string;
+  note: string;
+}

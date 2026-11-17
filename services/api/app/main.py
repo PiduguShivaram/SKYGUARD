@@ -1,4 +1,5 @@
 """FastAPI application entry point for SkyGuard API."""
+from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 from typing import Optional
 from fastapi import FastAPI, Query, Request
@@ -7,17 +8,29 @@ from fastapi.responses import JSONResponse
 
 from services.api.app.clients.open_meteo import open_meteo_client
 from services.api.app.config import settings
-from services.api.app.routers import alerts, farmer, geo, health, risk, weather
+from services.api.app.db.base import init_db
+from services.api.app.routers import alerts, farmer, geo, health, push, risk, weather
 from services.api.app.schemas.common import Provenance
 from services.api.app.schemas.geo import GeocodingResponse
 from services.api.app.schemas.weather import WeatherForecastResponse
+from services.api.app.services.vapid_service import get_or_create_vapid
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Initialize database tables and persistent VAPID keypair
+    await init_db()
+    get_or_create_vapid()
+    yield
+
 
 app = FastAPI(
     title=settings.PROJECT_NAME,
     version=settings.VERSION,
-    description="SkyGuard API — Real-time Weather and Climate Intelligence",
+    description="SkyGuard API — Real-time Weather, Worldwide Disaster Alerts & Web Push System",
     docs_url="/docs",
     redoc_url="/redoc",
+    lifespan=lifespan,
 )
 
 # CORS Middleware
@@ -76,6 +89,7 @@ app.include_router(health.router)
 app.include_router(geo.router)
 app.include_router(weather.router)
 app.include_router(alerts.router)
+app.include_router(push.router)
 app.include_router(risk.router)
 app.include_router(farmer.router)
 
@@ -87,7 +101,7 @@ async def root():
         "version": settings.VERSION,
         "docs": "/docs",
         "health": "/health",
-        "data_integrity_policy": "Strict zero-fabrication. Real Open-Meteo provider data.",
+        "data_integrity_policy": "Strict zero-fabrication. Real Open-Meteo & WMO/GDACS provider data.",
     }
 
 

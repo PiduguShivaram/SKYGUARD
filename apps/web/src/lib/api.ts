@@ -1,9 +1,15 @@
 import {
   DailyForecastPoint,
+  DiagnosticPushTestResponse,
   FarmerWatchResponse,
   GeocodingResponse,
+  GlobalAlertItem,
   GlobalAlertsResponse,
   LocationSearchResult,
+  PushPreferencesResponse,
+  PushPreferencesUpdateRequest,
+  PushSubscribePayload,
+  PushSubscribeResponse,
   RiskEvaluationResponse,
   WeatherForecastResponse,
 } from "@/types";
@@ -57,6 +63,15 @@ export async function getGlobalAlerts(
   return res.json();
 }
 
+export async function getAlertDetail(alertId: string): Promise<GlobalAlertItem> {
+  const res = await fetch(`${API_BASE}/api/v1/alerts/${alertId}`);
+  if (!res.ok) {
+    const errorBody = await res.json().catch(() => ({}));
+    throw new Error(errorBody.detail || `Alert detail fetch failed (${res.status})`);
+  }
+  return res.json();
+}
+
 export async function checkBackendHealth(): Promise<{
   status: string;
   service: string;
@@ -102,6 +117,92 @@ export async function getFarmerWatches(
   if (!res.ok) {
     const errorBody = await res.json().catch(() => ({}));
     throw new Error(errorBody.detail || `Farmer watches query failed (${res.status})`);
+  }
+  return res.json();
+}
+
+// Push Notification Client Functions (Phase 3)
+export async function getVapidPublicKey(): Promise<string> {
+  const res = await fetch(`${API_BASE}/api/v1/push/vapid-public-key`);
+  if (!res.ok) {
+    throw new Error("Failed to retrieve VAPID applicationServerKey from server.");
+  }
+  const data = await res.json();
+  return data.public_key;
+}
+
+export async function subscribePush(payload: PushSubscribePayload): Promise<PushSubscribeResponse> {
+  const res = await fetch(`${API_BASE}/api/v1/push/subscribe`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || `Push subscription registration failed (${res.status})`);
+  }
+  return res.json();
+}
+
+export async function getPushPreferences(token: string): Promise<PushPreferencesResponse> {
+  const res = await fetch(`${API_BASE}/api/v1/push/preferences`, {
+    headers: {
+      "X-Subscription-Token": token,
+    },
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || `Failed to fetch push preferences (${res.status})`);
+  }
+  return res.json();
+}
+
+export async function updatePushPreferences(
+  token: string,
+  payload: PushPreferencesUpdateRequest
+): Promise<PushPreferencesResponse> {
+  const res = await fetch(`${API_BASE}/api/v1/push/preferences`, {
+    method: "PUT",
+    headers: {
+      "Content-Type": "application/json",
+      "X-Subscription-Token": token,
+    },
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || `Failed to update push preferences (${res.status})`);
+  }
+  return res.json();
+}
+
+export async function unsubscribePush(
+  subscriptionId: string,
+  token: string
+): Promise<{ status: string; subscription_id: string }> {
+  const res = await fetch(`${API_BASE}/api/v1/push/subscriptions/${subscriptionId}`, {
+    method: "DELETE",
+    headers: {
+      "X-Subscription-Token": token,
+    },
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || `Failed to unsubscribe (${res.status})`);
+  }
+  return res.json();
+}
+
+export async function sendDiagnosticPushTest(token: string): Promise<DiagnosticPushTestResponse> {
+  const res = await fetch(`${API_BASE}/api/v1/push/test`, {
+    method: "POST",
+    headers: {
+      "X-Subscription-Token": token,
+    },
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || `Diagnostic push test failed (${res.status})`);
   }
   return res.json();
 }

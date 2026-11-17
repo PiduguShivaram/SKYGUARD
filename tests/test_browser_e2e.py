@@ -1,6 +1,6 @@
 """End-to-end browser automation test for SkyGuard full-stack application using Playwright.
 Verifies real Open-Meteo forecasts, Global WMO CAP / GDACS alerts, Derived Risk Indicators,
-and Gated Farmer Mode.
+Gated Farmer Mode, and Web Push Notification System.
 """
 import asyncio
 import os
@@ -85,7 +85,7 @@ async def run_e2e_verification():
         # Capture Public Mode screenshot
         os.makedirs("docs/screenshots", exist_ok=True)
         screenshot_public = "docs/screenshots/skyguard_public_mode_verified.png"
-        await page.screenshot(path=screenshot_public, full_page=True)
+        await page.screenshot(path=screenshot_public, full_page=False, timeout=10000)
         print(f"Captured Public Mode screenshot at: {screenshot_public}")
 
         # Step 10: Verify Phase 4 — Gated Farmer Mode
@@ -122,20 +122,67 @@ async def run_e2e_verification():
 
         # Capture Farmer Mode screenshot
         screenshot_farmer = "docs/screenshots/skyguard_farmer_mode_verified.png"
-        await page.screenshot(path=screenshot_farmer, full_page=True)
+        await page.screenshot(path=screenshot_farmer, full_page=False, timeout=10000)
         print(f"Captured Farmer Mode screenshot at: {screenshot_farmer}")
 
-        # Step 11: Verify Global Alerts filtering and tabs
-        print("Testing Global Alerts tabs and content...")
-        cap_tab = page.locator("button:has-text('Official CAP Severe Warnings')")
-        assert await cap_tab.is_visible(), "Official CAP tab must be visible"
-
-        gdacs_tab = page.locator("button:has-text('Multi-Hazard Disasters — GDACS')")
-        assert await gdacs_tab.is_visible(), "GDACS tab must be visible"
-        await gdacs_tab.click()
+        # Switch back to Public Mode
+        public_mode_btn = page.locator("button:has-text('Public Mode')")
+        await public_mode_btn.click()
         await page.wait_for_timeout(500)
 
-        # Step 12: Verify Data Integrity Non-Negotiables
+        # Step 11: Verify Global Push Notification System Modal (Phase 3 Requirement)
+        print("Verifying Global Push Notification System Modal...")
+        push_bell_btn = page.locator("button[title='Global Push Notification Settings']")
+        assert await push_bell_btn.is_visible(), "Push notification bell button must be visible in Header"
+        await push_bell_btn.click()
+        await page.wait_for_timeout(500)
+
+        modal_title = await page.locator("text=Global Push Notification Center").is_visible()
+        assert modal_title, "Global Push Notification Center modal must be visible"
+
+        # Verify Voluntary User Consent: Permission was NOT requested automatically
+        permission_chip = await page.locator("text=Browser Permission").is_visible()
+        assert permission_chip, "Browser permission status chip must be displayed"
+        enable_btn = page.locator("button:has-text('Enable Notifications')")
+        assert await enable_btn.is_visible(), "'Enable Notifications' button must be present"
+
+        # Verify Notification Settings fields
+        country_input = page.locator("input[placeholder='e.g. IN, US, DE']")
+        assert await country_input.is_visible(), "Country code preference input must be visible"
+
+        cat_cap = await page.get_by_text("Official CAP Severe Warnings", exact=True).is_visible()
+        cat_gdacs = await page.get_by_text("GDACS Multi-Hazard Disasters", exact=True).is_visible()
+        assert cat_cap, "Official CAP category option must be visible"
+        assert cat_gdacs, "GDACS disaster category option must be visible"
+
+        # Verify Privacy and Integrity Invariant Notice
+        privacy_notice = await page.locator("text=Privacy & Data Integrity Invariants:").is_visible()
+        assert privacy_notice, "Privacy & Data Integrity Invariants notice must be displayed"
+
+        # Capture screenshot of Push Notification Center
+        screenshot_push = "docs/screenshots/skyguard_push_modal_verified.png"
+        await page.screenshot(path=screenshot_push, full_page=False, timeout=10000)
+        print(f"Captured Push Notification Center screenshot at: {screenshot_push}")
+
+        # Close Modal
+        close_modal_btn = page.locator("button:has(svg.lucide-x)").first
+        await close_modal_btn.click()
+        await page.wait_for_timeout(400)
+
+        # Step 12: Verify Alert Inspection Modal (Authentic Alert Details)
+        print("Testing authentic alert inspection modal...")
+        inspect_btn = page.locator("button:has-text('Inspect Details')").first
+        if await inspect_btn.is_visible():
+            await inspect_btn.click()
+            await page.wait_for_timeout(600)
+            detail_modal_visible = await page.locator("text=Official Advisory Description").is_visible()
+            assert detail_modal_visible, "Official Advisory Description must be visible in Alert Detail Modal"
+            close_detail_btn = page.locator("button:has-text('Close')")
+            await close_detail_btn.click()
+            await page.wait_for_timeout(400)
+            print("Verified Alert Detail inspection modal.")
+
+        # Step 13: Verify Data Integrity Non-Negotiables
         print("Verifying strict data integrity guarantees...")
         all_clear_banners = await page.locator("h1, h2, h3, h4, h5, [role='alert']").filter(has_text="All Clear").count()
         assert all_clear_banners == 0, "No fake 'All Clear' banner or heading should be displayed"

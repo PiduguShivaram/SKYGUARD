@@ -15,6 +15,7 @@ import {
   Filter,
   CheckCircle2,
   RefreshCw,
+  Bell,
 } from "lucide-react";
 import { GlobalAlertItem, GlobalAlertsResponse } from "@/types";
 
@@ -26,6 +27,8 @@ interface GlobalAlertsPanelProps {
   selectedLabel?: string;
   isFiltered: boolean;
   onToggleFilter: () => void;
+  onSelectAlert?: (alert: GlobalAlertItem) => void;
+  onOpenNotifications?: () => void;
 }
 
 export const GlobalAlertsPanel: React.FC<GlobalAlertsPanelProps> = ({
@@ -36,6 +39,8 @@ export const GlobalAlertsPanel: React.FC<GlobalAlertsPanelProps> = ({
   selectedLabel,
   isFiltered,
   onToggleFilter,
+  onSelectAlert,
+  onOpenNotifications,
 }) => {
   const [activeTab, setActiveTab] = useState<"official" | "gdacs">("official");
 
@@ -134,6 +139,17 @@ export const GlobalAlertsPanel: React.FC<GlobalAlertsPanelProps> = ({
             <RefreshCw className={`w-3.5 h-3.5 ${loading ? "animate-spin text-blue-400" : ""}`} />
             <span>Refresh</span>
           </button>
+
+          {onOpenNotifications && (
+            <button
+              onClick={onOpenNotifications}
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-600/20 hover:bg-blue-600/30 border border-blue-500/30 text-blue-300 hover:text-white rounded-xl text-xs font-medium transition-colors"
+              title="Configure Web Push notifications"
+            >
+              <Bell className="w-3.5 h-3.5" />
+              <span>Push Alerts</span>
+            </button>
+          )}
         </div>
       </div>
 
@@ -264,15 +280,25 @@ export const GlobalAlertsPanel: React.FC<GlobalAlertsPanelProps> = ({
                     <span className="text-slate-300">{alert.affected_area}</span>
                   </div>
 
-                  <a
-                    href={alert.source_url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex items-center gap-1 text-blue-400 hover:text-blue-300 font-medium self-end sm:self-auto"
-                  >
-                    <span>Official CAP Record</span>
-                    <ExternalLink className="w-3 h-3" />
-                  </a>
+                  <div className="flex items-center gap-3 self-end sm:self-auto">
+                    {onSelectAlert && (
+                      <button
+                        onClick={() => onSelectAlert(alert)}
+                        className="text-blue-400 hover:text-blue-300 font-semibold text-xs"
+                      >
+                        Inspect Details
+                      </button>
+                    )}
+                    <a
+                      href={alert.source_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1 text-slate-400 hover:text-slate-200 font-medium"
+                    >
+                      <span>Official CAP</span>
+                      <ExternalLink className="w-3 h-3" />
+                    </a>
+                  </div>
                 </div>
               </div>
             ))
@@ -347,15 +373,25 @@ export const GlobalAlertsPanel: React.FC<GlobalAlertsPanelProps> = ({
                     )}
                   </div>
 
-                  <a
-                    href={disaster.source_url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex items-center gap-1 text-amber-400 hover:text-amber-300 font-medium self-end sm:self-auto"
-                  >
-                    <span>GDACS Situation Report</span>
-                    <ExternalLink className="w-3 h-3" />
-                  </a>
+                  <div className="flex items-center gap-3 self-end sm:self-auto">
+                    {onSelectAlert && (
+                      <button
+                        onClick={() => onSelectAlert(disaster)}
+                        className="text-amber-400 hover:text-amber-300 font-semibold text-xs"
+                      >
+                        Inspect Details
+                      </button>
+                    )}
+                    <a
+                      href={disaster.source_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1 text-slate-400 hover:text-slate-200 font-medium"
+                    >
+                      <span>GDACS Report</span>
+                      <ExternalLink className="w-3 h-3" />
+                    </a>
+                  </div>
                 </div>
               </div>
             ))

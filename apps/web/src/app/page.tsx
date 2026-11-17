@@ -9,10 +9,13 @@ import { DailyForecastList } from "@/components/DailyForecastList";
 import { DerivedRiskCard } from "@/components/DerivedRiskCard";
 import { FarmerModePanel } from "@/components/FarmerModePanel";
 import { GlobalAlertsPanel } from "@/components/GlobalAlertsPanel";
+import { NotificationSettingsModal } from "@/components/NotificationSettingsModal";
+import { AlertDetailModal } from "@/components/AlertDetailModal";
 import { ProvenanceFooter } from "@/components/ProvenanceFooter";
 import { ErrorState } from "@/components/ErrorState";
 import { checkBackendHealth, evaluateRisks, getForecast, getGlobalAlerts } from "@/lib/api";
 import {
+  GlobalAlertItem,
   GlobalAlertsResponse,
   LocationSearchResult,
   RiskEvaluationResponse,
@@ -38,10 +41,23 @@ export default function SkyGuardDashboard() {
   const [alertsData, setAlertsData] = useState<GlobalAlertsResponse | null>(null);
   const [isFiltered, setIsFiltered] = useState<boolean>(true);
 
+  // Modals & Push Notifications
+  const [isNotificationModalOpen, setIsNotificationModalOpen] = useState<boolean>(false);
+  const [notificationsActive, setNotificationsActive] = useState<boolean>(false);
+  const [selectedAlertForDetail, setSelectedAlertForDetail] = useState<GlobalAlertItem | null>(null);
+
   const [loadingWeather, setLoadingWeather] = useState<boolean>(false);
   const [loadingRisk, setLoadingRisk] = useState<boolean>(false);
   const [loadingAlerts, setLoadingAlerts] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Check push subscription state from localStorage
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const subId = localStorage.getItem("skyguard_push_sub_id");
+      setNotificationsActive(!!subId);
+    }
+  }, [isNotificationModalOpen]);
 
   // Initial Health Check and Global Alerts Pre-load
   useEffect(() => {
@@ -146,11 +162,13 @@ export default function SkyGuardDashboard() {
 
   return (
     <div className="min-h-screen flex flex-col bg-slate-950 text-slate-100 font-sans">
-      {/* Header with Mode Switcher */}
+      {/* Header with Mode Switcher & Push Bell */}
       <Header
         upstreamStatus={upstreamStatus}
         currentMode={appMode}
         onModeChange={(m) => setAppMode(m)}
+        onOpenNotifications={() => setIsNotificationModalOpen(true)}
+        notificationsActive={notificationsActive}
       />
 
       {/* Main Content Area */}
@@ -291,11 +309,30 @@ export default function SkyGuardDashboard() {
           selectedLabel={selectedLocation?.formatted_label}
           isFiltered={isFiltered}
           onToggleFilter={handleToggleFilter}
+          onSelectAlert={(alert) => setSelectedAlertForDetail(alert)}
+          onOpenNotifications={() => setIsNotificationModalOpen(true)}
         />
       </main>
 
       {/* Provenance & Transparency Footer */}
       <ProvenanceFooter weather={weatherData} />
+
+      {/* Global Push Notification Modal */}
+      <NotificationSettingsModal
+        isOpen={isNotificationModalOpen}
+        onClose={() => setIsNotificationModalOpen(false)}
+        selectedCountry={selectedLocation?.country_code}
+        selectedLatitude={selectedLocation?.latitude}
+        selectedLongitude={selectedLocation?.longitude}
+        selectedLocationLabel={selectedLocation?.formatted_label}
+      />
+
+      {/* Alert Detail Modal */}
+      <AlertDetailModal
+        alertId={selectedAlertForDetail?.id || null}
+        preloadedAlert={selectedAlertForDetail}
+        onClose={() => setSelectedAlertForDetail(null)}
+      />
     </div>
   );
 }

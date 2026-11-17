@@ -30,6 +30,15 @@ class Settings(BaseSettings):
     EE_SERVICE_ACCOUNT: str = ""
     EE_PRIVATE_KEY: str = ""
 
+    # Database
+    DATABASE_URL: str = "sqlite+aiosqlite:///./skyguard.db"
+
+    # Web Push & VAPID Configuration
+    VAPID_PUBLIC_KEY: str = ""
+    VAPID_PRIVATE_KEY: str = ""
+    VAPID_CLAIM_EMAIL: str = "mailto:alerts@skyguard.org"
+    VAPID_KEY_FILE: str = "vapid_private.pem"
+
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",
