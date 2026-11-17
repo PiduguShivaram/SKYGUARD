@@ -32,10 +32,15 @@ class GlobalAlertItem(BaseModel):
     alert_type: AlertCategoryEnum = Field(..., description="Categorical distinction: CAP warning vs GDACS disaster")
     event: str = Field(..., description="Event classification e.g. Tropical Cyclone, Flood, Severe Storm")
     headline: str = Field(..., description="Original headline from issuing authority")
-    severity: AlertSeverityLevel = Field(..., description="Standardized severity level")
+    severity: AlertSeverityLevel = Field(..., description="Standardized CAP severity level")
     severity_original: Optional[str] = Field(None, description="Original severity as reported by upstream source")
-    issuer: str = Field(..., description="Original issuing agency or NMHS")
-    country_code: Optional[str] = Field(None, description="ISO-2 or ISO-3 country code")
+    urgency: Optional[str] = Field("Unknown", description="CAP urgency: Immediate, Expected, Future, Past, Unknown")
+    certainty: Optional[str] = Field("Unknown", description="CAP certainty: Observed, Likely, Possible, Unlikely, Unknown")
+    local_color_code: Optional[str] = Field(None, description="Preserved official local warning colour code (e.g. Red, Orange, Yellow, Blue, Level III)")
+    language: Optional[str] = Field("en", description="Original bulletin language code (e.g. en, zh, de, cs)")
+    msg_type: Optional[str] = Field("Alert", description="CAP message type: Alert, Update, Cancel")
+    issuer: str = Field(..., description="Authentic issuing meteorological or disaster authority")
+    country_code: Optional[str] = Field(None, description="Standardized ISO-2 country code")
     affected_area: str = Field(..., description="Official area description or territory name")
     latitude: Optional[float] = Field(None, description="Centroid or point latitude if officially supplied")
     longitude: Optional[float] = Field(None, description="Centroid or point longitude if officially supplied")
@@ -61,8 +66,10 @@ class GlobalAlertsResponse(BaseModel):
     query_latitude: Optional[float] = None
     query_longitude: Optional[float] = None
     radius_km: Optional[float] = None
-    total_official_warnings: int
-    total_disaster_alerts: int
+    total_worldwide_official_warnings: int = Field(0, description="Total active official CAP warnings globally before filtering")
+    total_worldwide_disasters: int = Field(0, description="Total active disaster alerts globally before filtering")
+    total_official_warnings: int = Field(..., description="Number of official warnings matching the current query filter")
+    total_disaster_alerts: int = Field(..., description="Number of disaster alerts matching the current query filter")
     official_cap_warnings: List[GlobalAlertItem] = Field(default_factory=list)
     gdacs_disaster_alerts: List[GlobalAlertItem] = Field(default_factory=list)
     providers_health: Dict[str, ProviderHealth]

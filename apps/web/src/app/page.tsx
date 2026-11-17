@@ -63,7 +63,7 @@ export default function SkyGuardDashboard() {
   useEffect(() => {
     checkBackendHealth()
       .then((data) => {
-        setUpstreamStatus(data.status === "HEALTHY" ? "HEALTHY" : "DEGRADED");
+        setUpstreamStatus(data.status === "HEALTHY" ? "HEALTHY" : data.status === "DEGRADED" ? "DEGRADED" : "UNAVAILABLE");
       })
       .catch(() => {
         setUpstreamStatus("UNREACHABLE");

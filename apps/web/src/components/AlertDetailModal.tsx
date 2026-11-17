@@ -11,6 +11,8 @@ import {
   Info,
   Activity,
   AlertTriangle,
+  Globe,
+  Tag,
 } from "lucide-react";
 import { GlobalAlertItem } from "@/types";
 import { getAlertDetail } from "@/lib/api";
@@ -58,10 +60,18 @@ export const AlertDetailModal: React.FC<AlertDetailModalProps> = ({
         return "bg-orange-500/20 text-orange-300 border-orange-500/40";
       case "moderate":
         return "bg-amber-500/20 text-amber-300 border-amber-500/40";
+      case "minor":
+        return "bg-sky-500/20 text-sky-300 border-sky-500/40";
       default:
-        return "bg-blue-500/20 text-blue-300 border-blue-500/40";
+        return "bg-slate-500/20 text-slate-300 border-slate-500/40";
     }
   };
+
+  const isDescRedundant =
+    alert &&
+    (!alert.description ||
+      alert.description.trim().toLowerCase() === alert.headline.trim().toLowerCase() ||
+      alert.description.trim().toLowerCase() === alert.event.trim().toLowerCase());
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-fadeIn">
@@ -73,15 +83,35 @@ export const AlertDetailModal: React.FC<AlertDetailModalProps> = ({
               <ShieldAlert className="w-5 h-5" />
             </div>
             <div>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 flex-wrap">
                 <span className={`text-[11px] font-bold px-2 py-0.5 rounded border ${alert ? getSeverityBadgeClass(alert.severity) : ""}`}>
                   {alert?.severity || "Active Alert"}
                 </span>
+
+                {alert?.local_color_code && (
+                  <span className="text-[11px] font-bold px-2 py-0.5 rounded border bg-amber-500/20 text-amber-300 border-amber-500/30">
+                    {alert.local_color_code}
+                  </span>
+                )}
+
+                {alert?.msg_type === "Cancel" && (
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-rose-500/20 text-rose-300 border border-rose-500/40">
+                    CANCELLED
+                  </span>
+                )}
+
                 <span className="text-[11px] font-mono text-slate-400 bg-slate-850 px-2 py-0.5 rounded border border-slate-800">
                   {alert?.source_provider || "Authoritative Provider"}
                 </span>
+
+                {alert?.language && (
+                  <span className="text-[10px] font-mono uppercase text-slate-400 bg-slate-900 px-1.5 py-0.5 rounded border border-slate-800">
+                    {alert.language}
+                  </span>
+                )}
               </div>
-              <h3 className="text-base font-bold text-white mt-1.5 leading-snug">
+
+              <h3 className="text-base font-bold text-white mt-2 leading-snug">
                 {alert?.headline || "Loading Alert Details..."}
               </h3>
             </div>
@@ -126,6 +156,13 @@ export const AlertDetailModal: React.FC<AlertDetailModalProps> = ({
                 </span>
               </div>
 
+              <div className="flex items-center gap-2 text-slate-300">
+                <Tag className="w-4 h-4 text-slate-500 shrink-0" />
+                <span>
+                  <strong className="text-slate-400">Urgency / Certainty:</strong> {alert.urgency || "Unknown"} / {alert.certainty || "Unknown"}
+                </span>
+              </div>
+
               {alert.effective_time && (
                 <div className="flex items-center gap-2 text-slate-300">
                   <Clock className="w-4 h-4 text-slate-500 shrink-0" />
@@ -148,10 +185,16 @@ export const AlertDetailModal: React.FC<AlertDetailModalProps> = ({
             {/* Description */}
             <div>
               <h4 className="text-xs font-bold text-slate-300 uppercase tracking-wider mb-1.5">
-                Official Advisory Description
+                Official Advisory Bulletin
               </h4>
               <div className="p-4 rounded-xl bg-slate-850/40 border border-slate-800 text-slate-300 leading-relaxed max-h-56 overflow-y-auto whitespace-pre-wrap">
-                {alert.description}
+                {isDescRedundant ? (
+                  <p className="italic text-slate-400">
+                    Official bulletin headline conveys full scope: {alert.headline}
+                  </p>
+                ) : (
+                  alert.description
+                )}
               </div>
             </div>
 

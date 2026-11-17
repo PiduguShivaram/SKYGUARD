@@ -88,12 +88,20 @@ export const Header: React.FC<HeaderProps> = ({
           <div className="hidden lg:flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs bg-slate-800/90 border border-slate-700 text-slate-300">
             <span
               className={`w-2 h-2 rounded-full ${
-                upstreamStatus === "HEALTHY" || upstreamStatus === "REACHABLE"
+                upstreamStatus === "HEALTHY"
                   ? "bg-emerald-400 animate-pulse"
-                  : "bg-amber-400"
+                  : upstreamStatus === "DEGRADED"
+                  ? "bg-amber-400"
+                  : "bg-rose-400"
               }`}
             />
-            <span className="text-xs font-medium">Live Feeds: {upstreamStatus}</span>
+            <span className="text-xs font-medium">
+              {upstreamStatus === "HEALTHY"
+                ? "Live Feeds: HEALTHY"
+                : upstreamStatus === "DEGRADED"
+                ? "Live Feeds: DEGRADED (Partial)"
+                : "Live Feeds: UNAVAILABLE"}
+            </span>
           </div>
         </div>
       </div>

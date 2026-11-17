@@ -1,7 +1,7 @@
 """Global Alert Aggregator.
 
 Orchestrates GDACS, WMO SWIC, and Alert-Hub.org adapters with concurrent execution,
-deduplication, categorical separation, and independent provider health tracking.
+deduplication, categorical separation, verified geographic filtering, and independent provider health tracking.
 """
 import asyncio
 from datetime import datetime, timezone
@@ -38,13 +38,13 @@ class GlobalAlertAggregator:
 
         results = await asyncio.gather(gdacs_task, wmo_task, alerthub_task, return_exceptions=True)
 
-        gdacs_res = results[0] if not isinstance(results[0], Exception) else ([], None)
-        wmo_res = results[1] if not isinstance(results[1], Exception) else ([], None)
-        alerthub_res = results[2] if not isinstance(results[2], Exception) else ([], None)
+        gdacs_res = results[0] if not isinstance(results[0], Exception) else ([], None, 0)
+        wmo_res = results[1] if not isinstance(results[1], Exception) else ([], None, 0)
+        alerthub_res = results[2] if not isinstance(results[2], Exception) else ([], None, 0)
 
-        gdacs_alerts, gdacs_health = gdacs_res
-        wmo_alerts, wmo_health = wmo_res
-        alerthub_alerts, alerthub_health = alerthub_res
+        gdacs_alerts, gdacs_health, gdacs_total = gdacs_res
+        wmo_alerts, wmo_health, wmo_total = wmo_res
+        alerthub_alerts, alerthub_health, alerthub_total = alerthub_res
 
         # Providers Health Map
         providers_health: Dict[str, ProviderHealth] = {}
@@ -57,25 +57,28 @@ class GlobalAlertAggregator:
 
         # Deduplication and Categorical Separation
         seen_ids = set()
+        seen_canonical = set()
         official_warnings: List[GlobalAlertItem] = []
         disaster_alerts: List[GlobalAlertItem] = []
 
         # 1. Process Official CAP warnings (WMO SWIC & Alert-Hub)
         for item in wmo_alerts + alerthub_alerts:
-            # Simple deduplication key based on source id or headline
-            dedup_key = f"{item.source_provider}-{item.id}"
-            if dedup_key not in seen_ids:
-                seen_ids.add(dedup_key)
+            # Canonical key to prevent same alert from both WMO and Alert-Hub
+            canonical_key = f"{item.country_code or ''}-{item.headline.strip().lower()}-{item.affected_area.strip().lower()}"
+            dedup_id = item.id
+            if dedup_id not in seen_ids and canonical_key not in seen_canonical:
+                seen_ids.add(dedup_id)
+                seen_canonical.add(canonical_key)
                 official_warnings.append(item)
 
         # 2. Process GDACS Disaster alerts
         for item in gdacs_alerts:
-            dedup_key = f"{item.source_provider}-{item.id}"
-            if dedup_key not in seen_ids:
-                seen_ids.add(dedup_key)
+            dedup_id = item.id
+            if dedup_id not in seen_ids:
+                seen_ids.add(dedup_id)
                 disaster_alerts.append(item)
 
-        # Sort: Extreme first, then Severe, then Moderate
+        # Sort: Extreme first, then Severe, then Moderate, then Minor
         sev_rank = {"Extreme": 0, "Severe": 1, "Moderate": 2, "Minor": 3, "Unknown": 4}
         official_warnings.sort(key=lambda a: (sev_rank.get(a.severity.value, 5), a.headline))
         disaster_alerts.sort(key=lambda a: (sev_rank.get(a.severity.value, 5), a.distance_km if a.distance_km is not None else 99999))
@@ -101,6 +104,8 @@ class GlobalAlertAggregator:
             query_latitude=latitude,
             query_longitude=longitude,
             radius_km=radius_km,
+            total_worldwide_official_warnings=wmo_total + alerthub_total,
+            total_worldwide_disasters=gdacs_total,
             total_official_warnings=len(official_warnings),
             total_disaster_alerts=len(disaster_alerts),
             official_cap_warnings=official_warnings,

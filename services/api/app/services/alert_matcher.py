@@ -93,6 +93,11 @@ async def sync_upstream_alerts_to_db(db: AsyncSession) -> List[GlobalAlertItem]:
         if existing:
             existing.headline = item.headline
             existing.severity = item.severity
+            existing.urgency = item.urgency
+            existing.certainty = item.certainty
+            existing.local_color_code = item.local_color_code
+            existing.language = item.language
+            existing.msg_type = item.msg_type
             existing.description = item.description
             existing.effective_time = item.effective_time
             existing.expires_time = item.expires_time
@@ -109,6 +114,11 @@ async def sync_upstream_alerts_to_db(db: AsyncSession) -> List[GlobalAlertItem]:
                 event=item.event,
                 headline=item.headline,
                 severity=item.severity,
+                urgency=item.urgency,
+                certainty=item.certainty,
+                local_color_code=item.local_color_code,
+                language=item.language,
+                msg_type=item.msg_type,
                 issuer=item.issuer,
                 country_code=item.country_code,
                 affected_area=item.affected_area,

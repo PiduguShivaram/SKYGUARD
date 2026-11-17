@@ -95,6 +95,11 @@ export interface GlobalAlertItem {
   headline: string;
   severity: AlertSeverity;
   severity_original?: string;
+  urgency?: string;
+  certainty?: string;
+  local_color_code?: string;
+  language?: string;
+  msg_type?: string;
   issuer: string;
   country_code?: string;
   affected_area: string;
@@ -122,6 +127,8 @@ export interface GlobalAlertsResponse {
   query_latitude?: number;
   query_longitude?: number;
   radius_km?: number;
+  total_worldwide_official_warnings: number;
+  total_worldwide_disasters: number;
   total_official_warnings: number;
   total_disaster_alerts: number;
   official_cap_warnings: GlobalAlertItem[];
@@ -177,6 +184,7 @@ export interface FarmerWatchResponse {
   days_since_sowing?: number;
   watches: FarmerWatchSignal[];
   hardware_gating: HardwareGatingStatus;
+  applicability_notice?: string;
   provenance: Provenance;
 }
 

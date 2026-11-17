@@ -16,6 +16,8 @@ import {
   CheckCircle2,
   RefreshCw,
   Bell,
+  Eye,
+  Tag,
 } from "lucide-react";
 import { GlobalAlertItem, GlobalAlertsResponse } from "@/types";
 
@@ -59,6 +61,8 @@ export const GlobalAlertsPanel: React.FC<GlobalAlertsPanelProps> = ({
   const providers = alertsData.providers_health || {};
   const officialWarnings = alertsData.official_cap_warnings || [];
   const disasterAlerts = alertsData.gdacs_disaster_alerts || [];
+  const worldwideOfficialTotal = alertsData.total_worldwide_official_warnings || 0;
+  const worldwideDisastersTotal = alertsData.total_worldwide_disasters || 0;
 
   const getSeverityBadgeClass = (sev: string) => {
     switch (sev.toLowerCase()) {
@@ -68,9 +72,22 @@ export const GlobalAlertsPanel: React.FC<GlobalAlertsPanelProps> = ({
         return "bg-orange-500/20 text-orange-300 border border-orange-500/40";
       case "moderate":
         return "bg-amber-500/20 text-amber-300 border border-amber-500/40";
+      case "minor":
+        return "bg-sky-500/20 text-sky-300 border border-sky-500/40";
       default:
-        return "bg-blue-500/20 text-blue-300 border border-blue-500/40";
+        return "bg-slate-500/20 text-slate-300 border border-slate-500/40";
     }
+  };
+
+  const getColorCodeBadgeClass = (colorStr?: string) => {
+    if (!colorStr) return "bg-slate-800 text-slate-300 border-slate-700";
+    const c = colorStr.toLowerCase();
+    if (c.includes("red") || c.includes("level i")) return "bg-rose-500/20 text-rose-300 border-rose-500/40";
+    if (c.includes("orange") || c.includes("level ii")) return "bg-orange-500/20 text-orange-300 border-orange-500/40";
+    if (c.includes("yellow") || c.includes("level iii")) return "bg-amber-500/20 text-amber-300 border-amber-500/40";
+    if (c.includes("blue") || c.includes("level iv")) return "bg-blue-500/20 text-blue-300 border-blue-500/40";
+    if (c.includes("green")) return "bg-emerald-500/20 text-emerald-300 border-emerald-500/40";
+    return "bg-slate-800 text-slate-300 border-slate-700";
   };
 
   const getDisasterIcon = (event: string) => {
@@ -109,7 +126,7 @@ export const GlobalAlertsPanel: React.FC<GlobalAlertsPanelProps> = ({
                 </span>
               </div>
               <p className="text-xs text-slate-400 mt-0.5">
-                Official WMO Common Alerting Protocol warnings &amp; UN OCHA / European Commission disaster feeds
+                Authentic WMO Common Alerting Protocol bulletins &amp; UN OCHA / EC GDACS disaster feeds
               </p>
             </div>
           </div>
@@ -128,7 +145,11 @@ export const GlobalAlertsPanel: React.FC<GlobalAlertsPanelProps> = ({
             title="Toggle geographic filtering"
           >
             <Filter className="w-3.5 h-3.5" />
-            <span>{isFiltered ? `Filtered: ${selectedCountry || "Near Location"}` : "Worldwide View (All)"}</span>
+            <span>
+              {isFiltered
+                ? `Filtered: ${selectedCountry || selectedLabel || "Near Location"}`
+                : "Worldwide View (All Countries)"}
+            </span>
           </button>
 
           <button
@@ -150,6 +171,38 @@ export const GlobalAlertsPanel: React.FC<GlobalAlertsPanelProps> = ({
               <span>Push Alerts</span>
             </button>
           )}
+        </div>
+      </div>
+
+      {/* Scope & Count Breakdown Banner */}
+      <div className="p-3.5 bg-slate-950/60 rounded-xl border border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
+        <div className="flex items-center gap-2">
+          <span className="font-semibold text-slate-400">Current Scope:</span>
+          {isFiltered ? (
+            <span className="px-2 py-0.5 rounded bg-blue-500/20 text-blue-300 font-mono font-bold border border-blue-500/30">
+              Verified Territory: {selectedCountry || "Selected Coordinates"}
+            </span>
+          ) : (
+            <span className="px-2 py-0.5 rounded bg-purple-500/20 text-purple-300 font-semibold border border-purple-500/30">
+              Worldwide Planetary Aggregate
+            </span>
+          )}
+        </div>
+
+        <div className="flex items-center gap-4 text-slate-400">
+          <div>
+            Filtered Matching:{" "}
+            <strong className="text-white">
+              {officialWarnings.length} CAP warnings · {disasterAlerts.length} disasters
+            </strong>
+          </div>
+          <span className="text-slate-700">|</span>
+          <div>
+            Active Worldwide:{" "}
+            <span className="text-slate-300 font-medium">
+              {worldwideOfficialTotal.toLocaleString()} CAP bulletins · {worldwideDisastersTotal.toLocaleString()} disasters
+            </span>
+          </div>
         </div>
       </div>
 
@@ -244,64 +297,90 @@ export const GlobalAlertsPanel: React.FC<GlobalAlertsPanelProps> = ({
       {activeTab === "official" && (
         <div className="space-y-3">
           {officialWarnings.length > 0 ? (
-            officialWarnings.map((alert) => (
-              <div
-                key={alert.id}
-                className="p-4 rounded-xl bg-slate-850/60 border border-slate-750 hover:border-slate-700 transition-colors"
-              >
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                  <div className="flex items-center gap-2">
-                    <span className={`text-[11px] font-bold px-2 py-0.5 rounded-md ${getSeverityBadgeClass(alert.severity)}`}>
-                      {alert.severity}
-                    </span>
-                    <span className="text-[11px] font-semibold text-slate-400 bg-slate-900 px-2 py-0.5 rounded border border-slate-800">
-                      {alert.source_provider}
-                    </span>
-                    {alert.country_code && (
-                      <span className="text-[11px] font-mono font-bold text-blue-300">
-                        [{alert.country_code}]
+            officialWarnings.map((alert) => {
+              const isDescRedundant =
+                !alert.description ||
+                alert.description.trim().toLowerCase() === alert.headline.trim().toLowerCase() ||
+                alert.description.trim().toLowerCase() === alert.event.trim().toLowerCase();
+
+              return (
+                <div
+                  key={alert.id}
+                  className="p-4 rounded-xl bg-slate-850/60 border border-slate-750 hover:border-slate-700 transition-colors"
+                >
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className={`text-[11px] font-bold px-2 py-0.5 rounded-md ${getSeverityBadgeClass(alert.severity)}`}>
+                        {alert.severity}
                       </span>
-                    )}
-                  </div>
-                  <div className="text-[11px] text-slate-500 font-mono">
-                    {alert.effective_time ? `Issued: ${alert.effective_time}` : ""}
-                  </div>
-                </div>
 
-                <h4 className="text-sm font-bold text-white mt-2 leading-snug">{alert.headline}</h4>
-                <p className="text-xs text-slate-300 mt-1 line-clamp-2 leading-relaxed">{alert.description}</p>
+                      {alert.local_color_code && (
+                        <span className={`text-[11px] font-bold px-2 py-0.5 rounded-md border ${getColorCodeBadgeClass(alert.local_color_code)}`}>
+                          {alert.local_color_code}
+                        </span>
+                      )}
 
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mt-3 pt-2.5 border-t border-slate-800/80 text-[11px] text-slate-400">
-                  <div className="flex items-center gap-2">
-                    <span className="font-semibold text-slate-500">Issuer:</span>
-                    <span className="text-slate-300">{alert.issuer}</span>
-                    <span className="text-slate-600">·</span>
-                    <span className="font-semibold text-slate-500">Area:</span>
-                    <span className="text-slate-300">{alert.affected_area}</span>
+                      {alert.msg_type === "Cancel" && (
+                        <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-rose-500/20 text-rose-300 border border-rose-500/40">
+                          CANCELLED
+                        </span>
+                      )}
+
+                      <span className="text-[11px] font-semibold text-slate-400 bg-slate-900 px-2 py-0.5 rounded border border-slate-800">
+                        {alert.source_provider}
+                      </span>
+
+                      {alert.country_code && (
+                        <span className="text-[11px] font-mono font-bold text-blue-300 bg-blue-950/40 px-1.5 py-0.5 rounded border border-blue-500/30">
+                          {alert.country_code}
+                        </span>
+                      )}
+                    </div>
+
+                    <div className="text-[11px] text-slate-500 font-mono">
+                      {alert.effective_time ? `Issued: ${alert.effective_time}` : ""}
+                    </div>
                   </div>
 
-                  <div className="flex items-center gap-3 self-end sm:self-auto">
-                    {onSelectAlert && (
-                      <button
-                        onClick={() => onSelectAlert(alert)}
-                        className="text-blue-400 hover:text-blue-300 font-semibold text-xs"
+                  <h4 className="text-sm font-bold text-white mt-2 leading-snug">{alert.headline}</h4>
+
+                  {!isDescRedundant && (
+                    <p className="text-xs text-slate-300 mt-1 line-clamp-2 leading-relaxed">{alert.description}</p>
+                  )}
+
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mt-3 pt-2.5 border-t border-slate-800/80 text-[11px] text-slate-400">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="font-semibold text-slate-500">Issuer:</span>
+                      <span className="text-slate-300 font-medium">{alert.issuer}</span>
+                      <span className="text-slate-600">·</span>
+                      <span className="font-semibold text-slate-500">Area:</span>
+                      <span className="text-slate-300">{alert.affected_area}</span>
+                    </div>
+
+                    <div className="flex items-center gap-3 self-end sm:self-auto">
+                      {onSelectAlert && (
+                        <button
+                          onClick={() => onSelectAlert(alert)}
+                          className="text-blue-400 hover:text-blue-300 font-semibold text-xs inline-flex items-center gap-1"
+                        >
+                          <Eye className="w-3 h-3" />
+                          <span>Inspect Details</span>
+                        </button>
+                      )}
+                      <a
+                        href={alert.source_url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1 text-slate-400 hover:text-slate-200 font-medium"
                       >
-                        Inspect Details
-                      </button>
-                    )}
-                    <a
-                      href={alert.source_url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-flex items-center gap-1 text-slate-400 hover:text-slate-200 font-medium"
-                    >
-                      <span>Official CAP</span>
-                      <ExternalLink className="w-3 h-3" />
-                    </a>
+                        <span>Official CAP</span>
+                        <ExternalLink className="w-3 h-3" />
+                      </a>
+                    </div>
                   </div>
                 </div>
-              </div>
-            ))
+              );
+            })
           ) : (
             <div className="p-6 rounded-xl bg-slate-900/60 border border-slate-800 text-center space-y-2">
               <Info className="w-6 h-6 text-blue-400 mx-auto" />
@@ -310,7 +389,7 @@ export const GlobalAlertsPanel: React.FC<GlobalAlertsPanelProps> = ({
               </p>
               <p className="text-xs text-slate-400 max-w-lg mx-auto">
                 {isFiltered
-                  ? `There are currently no active WMO SWIC bulletins reported specifically for country ${selectedCountry || "selected region"}.`
+                  ? `There are currently no active WMO SWIC or Alert-Hub bulletins reported specifically for country ${selectedCountry || selectedLabel || "selected region"}.`
                   : "No official CAP warnings available."}
               </p>
               {isFiltered && (
@@ -318,7 +397,7 @@ export const GlobalAlertsPanel: React.FC<GlobalAlertsPanelProps> = ({
                   onClick={onToggleFilter}
                   className="mt-2 inline-flex items-center gap-1 px-3 py-1.5 bg-blue-600/20 hover:bg-blue-600/30 text-blue-300 rounded-lg text-xs font-semibold border border-blue-500/30 transition-colors"
                 >
-                  <span>View All Global Alerts ({providers.wmo_swic?.total_alerts_fetched || 0} active)</span>
+                  <span>View All Global Alerts ({worldwideOfficialTotal.toLocaleString()} active)</span>
                   <ChevronRight className="w-3.5 h-3.5" />
                 </button>
               )}
@@ -331,70 +410,81 @@ export const GlobalAlertsPanel: React.FC<GlobalAlertsPanelProps> = ({
       {activeTab === "gdacs" && (
         <div className="space-y-3">
           {disasterAlerts.length > 0 ? (
-            disasterAlerts.map((disaster) => (
-              <div
-                key={disaster.id}
-                className="p-4 rounded-xl bg-slate-850/60 border border-slate-750 hover:border-slate-700 transition-colors"
-              >
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                  <div className="flex items-center gap-2">
-                    <div className="p-1.5 rounded-lg bg-slate-900 border border-slate-800">
-                      {getDisasterIcon(disaster.event)}
-                    </div>
-                    <span className={`text-[11px] font-bold px-2 py-0.5 rounded-md ${getSeverityBadgeClass(disaster.severity)}`}>
-                      {disaster.severity}
-                    </span>
-                    <span className="text-xs font-bold text-white">{disaster.event}</span>
-                    {disaster.country_code && (
-                      <span className="text-[11px] font-mono text-slate-400">
-                        ({disaster.country_code})
+            disasterAlerts.map((disaster) => {
+              const isDescRedundant =
+                !disaster.description ||
+                disaster.description.trim().toLowerCase() === disaster.headline.trim().toLowerCase() ||
+                disaster.description.trim().toLowerCase() === disaster.event.trim().toLowerCase();
+
+              return (
+                <div
+                  key={disaster.id}
+                  className="p-4 rounded-xl bg-slate-850/60 border border-slate-750 hover:border-slate-700 transition-colors"
+                >
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                    <div className="flex items-center gap-2">
+                      <div className="p-1.5 rounded-lg bg-slate-900 border border-slate-800">
+                        {getDisasterIcon(disaster.event)}
+                      </div>
+                      <span className={`text-[11px] font-bold px-2 py-0.5 rounded-md ${getSeverityBadgeClass(disaster.severity)}`}>
+                        {disaster.severity}
                       </span>
+                      <span className="text-xs font-bold text-white">{disaster.event}</span>
+                      {disaster.country_code && (
+                        <span className="text-[11px] font-mono text-slate-400">
+                          ({disaster.country_code})
+                        </span>
+                      )}
+                    </div>
+
+                    {disaster.distance_km !== undefined && disaster.distance_km !== null && (
+                      <div className="text-xs font-semibold text-amber-300 bg-amber-500/10 px-2 py-0.5 rounded border border-amber-500/20">
+                        ~{Math.round(disaster.distance_km).toLocaleString()} km from selected coordinate
+                      </div>
                     )}
                   </div>
 
-                  {disaster.distance_km !== undefined && disaster.distance_km !== null && (
-                    <div className="text-xs font-semibold text-amber-300 bg-amber-500/10 px-2 py-0.5 rounded border border-amber-500/20">
-                      ~{Math.round(disaster.distance_km).toLocaleString()} km from selected coordinate
-                    </div>
+                  <h4 className="text-sm font-bold text-white mt-2 leading-snug">{disaster.headline}</h4>
+
+                  {!isDescRedundant && (
+                    <p className="text-xs text-slate-300 mt-1 leading-relaxed">{disaster.description}</p>
                   )}
-                </div>
 
-                <h4 className="text-sm font-bold text-white mt-2 leading-snug">{disaster.headline}</h4>
-                <p className="text-xs text-slate-300 mt-1 leading-relaxed">{disaster.description}</p>
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mt-3 pt-2.5 border-t border-slate-800/80 text-[11px] text-slate-400">
+                    <div className="flex items-center gap-2">
+                      <span className="font-semibold text-slate-500">Location:</span>
+                      <span className="text-slate-300">{disaster.affected_area}</span>
+                      {disaster.latitude && disaster.longitude && (
+                        <span className="font-mono text-slate-500">
+                          [{disaster.latitude.toFixed(2)}°, {disaster.longitude.toFixed(2)}°]
+                        </span>
+                      )}
+                    </div>
 
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mt-3 pt-2.5 border-t border-slate-800/80 text-[11px] text-slate-400">
-                  <div className="flex items-center gap-2">
-                    <span className="font-semibold text-slate-500">Location:</span>
-                    <span className="text-slate-300">{disaster.affected_area}</span>
-                    {disaster.latitude && disaster.longitude && (
-                      <span className="font-mono text-slate-500">
-                        [{disaster.latitude.toFixed(2)}°, {disaster.longitude.toFixed(2)}°]
-                      </span>
-                    )}
-                  </div>
-
-                  <div className="flex items-center gap-3 self-end sm:self-auto">
-                    {onSelectAlert && (
-                      <button
-                        onClick={() => onSelectAlert(disaster)}
-                        className="text-amber-400 hover:text-amber-300 font-semibold text-xs"
+                    <div className="flex items-center gap-3 self-end sm:self-auto">
+                      {onSelectAlert && (
+                        <button
+                          onClick={() => onSelectAlert(disaster)}
+                          className="text-amber-400 hover:text-amber-300 font-semibold text-xs inline-flex items-center gap-1"
+                        >
+                          <Eye className="w-3 h-3" />
+                          <span>Inspect Details</span>
+                        </button>
+                      )}
+                      <a
+                        href={disaster.source_url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1 text-slate-400 hover:text-slate-200 font-medium"
                       >
-                        Inspect Details
-                      </button>
-                    )}
-                    <a
-                      href={disaster.source_url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-flex items-center gap-1 text-slate-400 hover:text-slate-200 font-medium"
-                    >
-                      <span>GDACS Report</span>
-                      <ExternalLink className="w-3 h-3" />
-                    </a>
+                        <span>GDACS Report</span>
+                        <ExternalLink className="w-3 h-3" />
+                      </a>
+                    </div>
                   </div>
                 </div>
-              </div>
-            ))
+              );
+            })
           ) : (
             <div className="p-6 rounded-xl bg-slate-900/60 border border-slate-800 text-center space-y-2">
               <Info className="w-6 h-6 text-amber-400 mx-auto" />
@@ -409,7 +499,7 @@ export const GlobalAlertsPanel: React.FC<GlobalAlertsPanelProps> = ({
                   onClick={onToggleFilter}
                   className="mt-2 inline-flex items-center gap-1 px-3 py-1.5 bg-amber-600/20 hover:bg-amber-600/30 text-amber-300 rounded-lg text-xs font-semibold border border-amber-500/30 transition-colors"
                 >
-                  <span>View All Global Disasters ({providers.gdacs?.total_alerts_fetched || 0} active)</span>
+                  <span>View All Global Disasters ({worldwideDisastersTotal.toLocaleString()} active)</span>
                   <ChevronRight className="w-3.5 h-3.5" />
                 </button>
               )}

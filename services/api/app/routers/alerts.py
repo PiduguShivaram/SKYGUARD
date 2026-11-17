@@ -79,27 +79,27 @@ async def get_gdacs_alerts(
     radius_km: Optional[float] = Query(1000.0),
 ):
     """Direct feed of GDACS disaster events (Tropical Cyclones, Floods, Earthquakes, Droughts)."""
-    alerts, health = await gdacs_adapter.fetch_alerts(
+    alerts, health, total_unfiltered = await gdacs_adapter.fetch_alerts(
         country_code=country_code,
         query_lat=latitude,
         query_lon=longitude,
         radius_km=radius_km,
     )
-    return {"total": len(alerts), "health": health, "alerts": alerts}
+    return {"total": len(alerts), "total_worldwide": total_unfiltered, "health": health, "alerts": alerts}
 
 
 @router.get("/wmo")
 async def get_wmo_cap_alerts(country_code: Optional[str] = Query(None)):
     """Direct feed of official WMO Severe Weather Information Centre (SWIC) CAP warnings."""
-    alerts, health = await wmo_adapter.fetch_alerts(country_code=country_code)
-    return {"total": len(alerts), "health": health, "alerts": alerts}
+    alerts, health, total_unfiltered = await wmo_adapter.fetch_alerts(country_code=country_code)
+    return {"total": len(alerts), "total_worldwide": total_unfiltered, "health": health, "alerts": alerts}
 
 
 @router.get("/alerthub")
 async def get_alerthub_cap_alerts(country_code: Optional[str] = Query(None)):
     """Direct feed of Alert-Hub.org international CAP aggregation feed."""
-    alerts, health = await alert_hub_adapter.fetch_alerts(country_code=country_code)
-    return {"total": len(alerts), "health": health, "alerts": alerts}
+    alerts, health, total_unfiltered = await alert_hub_adapter.fetch_alerts(country_code=country_code)
+    return {"total": len(alerts), "total_worldwide": total_unfiltered, "health": health, "alerts": alerts}
 
 
 @router.get("/{alert_id}", response_model=GlobalAlertItem)

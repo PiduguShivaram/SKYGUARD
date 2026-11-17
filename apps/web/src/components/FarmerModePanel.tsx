@@ -78,12 +78,13 @@ export const FarmerModePanel: React.FC<FarmerModePanelProps> = ({ daily }) => {
 
           <div className="flex items-center gap-2">
             <a
-              href="https://imdagrimet.gov.in"
+              href="https://icar.org.in"
               target="_blank"
               rel="noopener noreferrer"
-              className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-xs font-medium text-emerald-400 hover:text-emerald-300 transition-colors"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-xs font-medium text-emerald-400 hover:text-emerald-300 transition-colors"
+              title="Indian Council of Agricultural Research - Agrometeorological Guidelines"
             >
-              <span>IMD Agrimet</span>
+              <span>ICAR-AICRPAM / FAO Framework</span>
               <ExternalLink className="w-3 h-3" />
             </a>
           </div>
@@ -133,7 +134,7 @@ export const FarmerModePanel: React.FC<FarmerModePanelProps> = ({ daily }) => {
           <span>Field Agromet Watches for {selectedCrop}</span>
         </h4>
         <p className="text-xs text-slate-400 mb-4">
-          Source: ICAR Agrometeorological Advisory Heuristics &amp; 7-Day Numerical Forecasts
+          Heuristic operational rules based on ICAR-AICRPAM advisory guidelines &amp; 7-day numerical forecasts
         </p>
 
         {loading ? (
@@ -166,16 +167,24 @@ export const FarmerModePanel: React.FC<FarmerModePanelProps> = ({ daily }) => {
             ))}
           </div>
         ) : (
-          <div className="p-4 rounded-xl bg-slate-900/50 border border-slate-700/60 flex items-center gap-3">
-            <CheckCircle className="w-5 h-5 text-emerald-400 shrink-0" />
+          <div className="p-4 rounded-xl bg-slate-900/50 border border-slate-700/60 flex items-start gap-3">
+            <CheckCircle className="w-5 h-5 text-emerald-400 shrink-0 mt-0.5" />
             <div>
-              <p className="text-sm font-semibold text-white">No Critical Field Watches</p>
-              <p className="text-xs text-slate-400">
-                No extreme dry spells, excessive waterlogging, or severe crop thermal thresholds predicted over the 7-day forecast.
+              <p className="text-sm font-semibold text-white">No Forecast-Threshold Triggers Detected</p>
+              <p className="text-xs text-slate-400 mt-0.5 leading-relaxed">
+                Standard 7-day numerical forecast parameters do not breach preset heuristic thresholds for extreme dry spells (&lt;5mm rain &amp; &ge;34&deg;C), excessive inundation (&ge;35mm/day), or severe canopy heat (&ge;39&deg;C). This does <strong>NOT</strong> guarantee absence of crop disease, sub-surface moisture deficit, localized frost, or pest infestation.
               </p>
             </div>
           </div>
         )}
+
+        {/* Scientific Applicability Notice */}
+        <div className="mt-4 p-3 rounded-xl bg-slate-900/40 border border-slate-800 text-[11px] text-slate-400 leading-relaxed flex items-start gap-2">
+          <Info className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
+          <div>
+            <strong className="text-slate-300">Agroclimatic Applicability Limitation:</strong> Operational watches use ICAR-AICRPAM guidelines calibrated primarily for tropical and subtropical agroclimatic zones. Soil moisture retention, terrain slope, cultivar genetics, and microclimates vary. These forecast heuristics must be verified against district agricultural extension advisories and physical soil checks.
+          </div>
+        </div>
       </div>
 
       {/* Telemetry & Satellite Gating Notice */}

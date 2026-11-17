@@ -1,13 +1,17 @@
 """GDACS (Global Disaster Alert and Coordination System) Adapter.
 
 Fetches and safely parses live multi-hazard disaster events (cyclones, floods, earthquakes, droughts).
-Source: United Nations OCHA and European Commission Joint Research Centre.
+Source: United Nations OCHA and European Commission Joint Research Centre (https://www.gdacs.org).
 """
 import time
 from typing import List, Optional, Tuple
 import httpx
 
 from services.api.app.adapters.geo_utils import haversine_distance_km
+from services.api.app.adapters.source_registry import (
+    normalize_to_iso2,
+    strictly_matches_country,
+)
 from services.api.app.schemas.global_alerts import (
     AlertCategoryEnum,
     AlertSeverityLevel,
@@ -53,7 +57,12 @@ class GDACSAdapter:
         query_lat: Optional[float] = None,
         query_lon: Optional[float] = None,
         radius_km: Optional[float] = None,
-    ) -> Tuple[List[GlobalAlertItem], ProviderHealth]:
+    ) -> Tuple[List[GlobalAlertItem], ProviderHealth, int]:
+        """Fetch GDACS disaster events with strict verified country and coordinate filtering.
+        
+        Returns:
+            (filtered_alerts, health, total_unfiltered_count)
+        """
         start_time = time.time()
         headers = {"User-Agent": "SkyGuard-Weather-Intelligence/2.0 (Open Disaster Alert Integration)"}
 
@@ -73,13 +82,13 @@ class GDACSAdapter:
                 error_message=f"Failed to query GDACS API: {str(exc)}",
                 attribution="UN OCHA & European Commission (https://www.gdacs.org)",
             )
-            return [], health
+            return [], health, 0
 
         latency = (time.time() - start_time) * 1000.0
         features = data.get("features", []) if isinstance(data, dict) else []
+        total_unfiltered = len(features)
 
         normalized: List[GlobalAlertItem] = []
-        c_code_clean = country_code.strip().upper() if country_code else None
 
         for f in features:
             props = f.get("properties", {})
@@ -117,54 +126,58 @@ class GDACSAdapter:
             if query_lat is not None and query_lon is not None and lat is not None and lon is not None:
                 dist_km = haversine_distance_km(query_lat, query_lon, lat, lon)
 
-            # Filtering
+            # Strict verified country matching (NEVER substring)
             matches_country = True
-            if c_code_clean:
-                matches_country = (
-                    c_code_clean == iso3
-                    or c_code_clean in iso3
-                    or c_code_clean.lower() in country_str.lower()
-                    or (affected and any(c_code_clean.lower() in str(a).lower() for a in affected))
+            if country_code:
+                matches_country = strictly_matches_country(
+                    target_country=country_code,
+                    alert_country_iso2=normalize_to_iso2(iso3) or normalize_to_iso2(country_str),
+                    alert_iso3=iso3,
+                    alert_country_name=country_str,
+                    affected_countries=affected,
                 )
 
             matches_spatial = True
             if radius_km is not None and dist_km is not None:
                 matches_spatial = dist_km <= radius_km
 
-            item = GlobalAlertItem(
-                id=alert_id,
-                source_provider="GDACS",
-                alert_type=AlertCategoryEnum.GDACS_DISASTER_ALERT,
-                event=event_name,
-                headline=name,
-                severity=severity,
-                severity_original=f"GDACS {alert_level} Alert" if alert_level else None,
-                issuer="United Nations OCHA / European Commission (GDACS)",
-                country_code=iso3 or country_str[:3].upper(),
-                affected_area=area_desc or country_str or "Multi-regional",
-                latitude=lat,
-                longitude=lon,
-                effective_time=str(props.get("fromdate", "")),
-                expires_time=str(props.get("todate", "")),
-                description=desc,
-                source_url=report_url,
-                distance_km=round(dist_km, 1) if dist_km is not None else None,
-            )
-
-            # Include item if it matches filters or if no filters specified
-            if (c_code_clean is None and radius_km is None) or (c_code_clean and matches_country) or (radius_km and matches_spatial):
+            if matches_country and matches_spatial:
+                item = GlobalAlertItem(
+                    id=alert_id,
+                    source_provider="GDACS",
+                    alert_type=AlertCategoryEnum.GDACS_DISASTER_ALERT,
+                    event=event_name,
+                    headline=name,
+                    severity=severity,
+                    severity_original=f"GDACS {alert_level} Alert" if alert_level else None,
+                    urgency="Expected",
+                    certainty="Observed" if event_type_raw in ["EQ", "FL"] else "Likely",
+                    local_color_code=f"{alert_level} Alert" if alert_level else None,
+                    language="en",
+                    msg_type="Alert",
+                    issuer="United Nations OCHA & European Commission (GDACS)",
+                    country_code=normalize_to_iso2(iso3) or normalize_to_iso2(country_str),
+                    affected_area=area_desc or country_str or "International Region",
+                    latitude=lat,
+                    longitude=lon,
+                    effective_time=props.get("fromdate") or None,
+                    expires_time=props.get("todate") or None,
+                    description=desc,
+                    source_url=report_url,
+                    distance_km=round(dist_km, 1) if dist_km is not None else None,
+                )
                 normalized.append(item)
 
         health = ProviderHealth(
             provider_name="GDACS",
             status=ProviderHealthStatus.CONNECTED,
-            total_alerts_fetched=len(features),
+            total_alerts_fetched=total_unfiltered,
             retrieved_at=time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
             latency_ms=round(latency, 1),
             attribution="UN OCHA & European Commission (https://www.gdacs.org)",
         )
 
-        return normalized, health
+        return normalized, health, total_unfiltered
 
 
 gdacs_adapter = GDACSAdapter()

@@ -73,16 +73,23 @@ export const CurrentWeatherCard: React.FC<CurrentWeatherCardProps> = ({ weather,
       {/* Header: Location & Exact Coordinates */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-6 border-b border-slate-800">
         <div>
-          <span className="text-[11px] font-semibold uppercase tracking-wider text-blue-400">
-            Current Weather Observation (NWP Model)
-          </span>
+          <div className="flex items-center gap-2 mb-1">
+            <span className="text-[11px] font-semibold uppercase tracking-wider text-blue-400">
+              NWP Model-Estimated Current Conditions
+            </span>
+            <span className="text-[10px] font-semibold px-2 py-0.5 rounded bg-blue-500/10 text-blue-300 border border-blue-500/20">
+              Numerical Model Grid Cell
+            </span>
+          </div>
           <h2 className="text-xl sm:text-2xl font-bold text-white tracking-tight">
             {locationLabel || `${weather.latitude}°N, ${weather.longitude}°E`}
           </h2>
           <div className="text-xs text-slate-400 font-mono mt-1 space-y-0.5">
+            <p className="text-[11px] text-slate-400">
+              Derived from Open-Meteo NWP model simulation (grid cell {weather.latitude.toFixed(4)}°N, {weather.longitude.toFixed(4)}°E); not an in-situ physical station observation.
+            </p>
             <p>
               Requested: {weather.requested_latitude.toFixed(4)}°N, {weather.requested_longitude.toFixed(4)}°E
-              {" · "}Grid Cell: {weather.latitude.toFixed(4)}°N, {weather.longitude.toFixed(4)}°E
               {weather.elevation !== undefined && weather.elevation !== null ? ` · Elev: ${weather.elevation}m` : ""}
             </p>
             <p>

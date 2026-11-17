@@ -53,4 +53,8 @@ class FarmerWatchResponse(BaseModel):
     days_since_sowing: Optional[int] = None
     watches: List[FarmerWatchSignal]
     hardware_gating: HardwareGatingStatus
+    applicability_notice: str = Field(
+        default="Agronomic heuristics are derived from ICAR-AICRPAM guidelines calibrated for tropical and subtropical agroclimatic regions. Soil moisture holding capacity, drainage slopes, and cultivar heat tolerances vary. Forecast-derived rules provide operational awareness but do not replace on-field soil testing or local agricultural extension advisories.",
+        description="Explicit scientific applicability boundaries"
+    )
     provenance: Provenance

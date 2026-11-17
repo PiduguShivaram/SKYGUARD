@@ -35,6 +35,26 @@ async def get_db() -> AsyncGenerator[AsyncSession, None]:
 
 
 async def init_db() -> None:
-    """Initialize database tables asynchronously."""
+    """Initialize database tables asynchronously with automatic column migration for SQLite."""
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
+
+        def migrate_columns(sync_conn):
+            try:
+                from sqlalchemy import text
+                res = sync_conn.execute(text("PRAGMA table_info(alert_records)"))
+                existing_cols = {row[1] for row in res.fetchall()}
+                new_cols = [
+                    ("urgency", "VARCHAR(32)"),
+                    ("certainty", "VARCHAR(32)"),
+                    ("local_color_code", "VARCHAR(64)"),
+                    ("language", "VARCHAR(16)"),
+                    ("msg_type", "VARCHAR(32)"),
+                ]
+                for col_name, col_type in new_cols:
+                    if col_name not in existing_cols:
+                        sync_conn.execute(text(f"ALTER TABLE alert_records ADD COLUMN {col_name} {col_type}"))
+            except Exception:
+                pass
+
+        await conn.run_sync(migrate_columns)

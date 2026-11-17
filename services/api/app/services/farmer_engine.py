@@ -46,7 +46,7 @@ def evaluate_farmer_watches(
                     date=ref_date,
                     observation=f"7-day cumulative rainfall is {total_rain:.1f} mm; maximum projected temperature reaches {hottest_day.temperature_2m_max:.1f}°C.",
                     action=f"For {crop.value}, verify physical soil moisture depth before scheduling irrigation cycles. Ensure furrow/drip lines are cleared.",
-                    scientific_rationale="ICAR Agrometeorological Advisory Guidelines: Sustained dry spells combined with high evaporative demand trigger root moisture stress.",
+                    scientific_rationale="ICAR-AICRPAM Guidelines: Sustained dry spells combined with high evaporative demand trigger root moisture stress.",
                 )
             )
 
@@ -93,9 +93,9 @@ def evaluate_farmer_watches(
     )
 
     provenance = Provenance(
-        provider="SkyGuard Agrometeorological Intelligence Engine",
-        attribution_url="https://icar.org.in / https://imdagrimet.gov.in",
-        disclaimer="Agronomic watches are heuristic operational suggestions based on forecast parameters. Always cross-reference with your local Krishi Vigyan Kendra (KVK) and State Agriculture University advisories.",
+        provider="SkyGuard Agrometeorological Advisory Framework (ICAR-AICRPAM / FAO Guidelines)",
+        attribution_url="https://icar.org.in / https://www.fao.org/land-water/agronomy",
+        disclaimer="Agronomic watches are heuristic forecast-derived operational suggestions based on published ICAR-AICRPAM guidelines. Applicability is restricted to tropical and subtropical field conditions. Always cross-reference with your local agricultural university or district Krishi Vigyan Kendra (KVK).",
     )
 
     return FarmerWatchResponse(
@@ -103,5 +103,10 @@ def evaluate_farmer_watches(
         days_since_sowing=days_since_sowing,
         watches=watches,
         hardware_gating=gating,
+        applicability_notice=(
+            "Agronomic heuristics are derived from ICAR-AICRPAM guidelines calibrated for tropical and subtropical agroclimatic regions. "
+            "Soil moisture holding capacity, drainage slopes, and cultivar heat tolerances vary. Forecast-derived rules provide operational "
+            "awareness but do not replace on-field soil testing or local agricultural extension advisories."
+        ),
         provenance=provenance,
     )
