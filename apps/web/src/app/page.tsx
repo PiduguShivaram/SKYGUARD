@@ -6,16 +6,19 @@ import { LocationSearchBar } from "@/components/LocationSearchBar";
 import { CurrentWeatherCard } from "@/components/CurrentWeatherCard";
 import { HourlyChart } from "@/components/HourlyChart";
 import { DailyForecastList } from "@/components/DailyForecastList";
+import { DerivedRiskCard } from "@/components/DerivedRiskCard";
+import { FarmerModePanel } from "@/components/FarmerModePanel";
 import { GlobalAlertsPanel } from "@/components/GlobalAlertsPanel";
 import { ProvenanceFooter } from "@/components/ProvenanceFooter";
 import { ErrorState } from "@/components/ErrorState";
-import { checkBackendHealth, getForecast, getGlobalAlerts } from "@/lib/api";
+import { checkBackendHealth, evaluateRisks, getForecast, getGlobalAlerts } from "@/lib/api";
 import {
   GlobalAlertsResponse,
   LocationSearchResult,
+  RiskEvaluationResponse,
   WeatherForecastResponse,
 } from "@/types";
-import { MapPin, CloudSun } from "lucide-react";
+import { MapPin, CloudSun, Sprout, User } from "lucide-react";
 
 const POPULAR_CITIES = [
   { name: "Warangal", label: "Warangal, Telangana, India", lat: 17.9784, lon: 79.6005, country: "IN" },
@@ -26,14 +29,17 @@ const POPULAR_CITIES = [
   { name: "Berlin", label: "Berlin, Germany", lat: 52.5200, lon: 13.4050, country: "DE" },
 ];
 
-export default function GlobalWeatherAndAlertsPage() {
+export default function SkyGuardDashboard() {
+  const [appMode, setAppMode] = useState<"public" | "farmer">("public");
   const [upstreamStatus, setUpstreamStatus] = useState<string>("CHECKING");
   const [selectedLocation, setSelectedLocation] = useState<LocationSearchResult | null>(null);
   const [weatherData, setWeatherData] = useState<WeatherForecastResponse | null>(null);
+  const [riskData, setRiskData] = useState<RiskEvaluationResponse | null>(null);
   const [alertsData, setAlertsData] = useState<GlobalAlertsResponse | null>(null);
   const [isFiltered, setIsFiltered] = useState<boolean>(true);
 
   const [loadingWeather, setLoadingWeather] = useState<boolean>(false);
+  const [loadingRisk, setLoadingRisk] = useState<boolean>(false);
   const [loadingAlerts, setLoadingAlerts] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -55,7 +61,7 @@ export default function GlobalWeatherAndAlertsPage() {
       .finally(() => setLoadingAlerts(false));
   }, []);
 
-  // Fetch forecast and filtered alerts when location is selected
+  // Fetch forecast, risks, and filtered alerts when location is selected
   const fetchLocationData = useCallback(
     async (lat: number, lon: number, label: string, countryCode?: string, filterActive: boolean = true) => {
       setLoadingWeather(true);
@@ -65,15 +71,25 @@ export default function GlobalWeatherAndAlertsPage() {
       try {
         const forecast = await getForecast(lat, lon);
         setWeatherData(forecast);
+
+        // 2. Compute Derived Scientific Risk Indicators
+        if (forecast.daily && forecast.daily.length > 0) {
+          setLoadingRisk(true);
+          evaluateRisks(forecast.daily)
+            .then((r) => setRiskData(r))
+            .catch((err) => console.error("Risk evaluation error:", err))
+            .finally(() => setLoadingRisk(false));
+        }
       } catch (err: any) {
         console.error("Weather forecast error:", err);
         setError(err.message || "Failed to load Open-Meteo forecast.");
         setWeatherData(null);
+        setRiskData(null);
       } finally {
         setLoadingWeather(false);
       }
 
-      // 2. Fetch Alerts (either filtered by country/radius or global)
+      // 3. Fetch Alerts (either filtered by country/radius or global)
       setLoadingAlerts(true);
       try {
         const cCode = filterActive ? countryCode : undefined;
@@ -130,8 +146,12 @@ export default function GlobalWeatherAndAlertsPage() {
 
   return (
     <div className="min-h-screen flex flex-col bg-slate-950 text-slate-100 font-sans">
-      {/* Header */}
-      <Header upstreamStatus={upstreamStatus} />
+      {/* Header with Mode Switcher */}
+      <Header
+        upstreamStatus={upstreamStatus}
+        currentMode={appMode}
+        onModeChange={(m) => setAppMode(m)}
+      />
 
       {/* Main Content Area */}
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
@@ -207,22 +227,47 @@ export default function GlobalWeatherAndAlertsPage() {
 
         {/* Live Weather Forecast Display */}
         {weatherData && !loadingWeather && (
-          <div className="space-y-6">
-            {/* Current Conditions Hero Card */}
-            <CurrentWeatherCard
-              weather={weatherData}
-              locationLabel={selectedLocation?.formatted_label || "Selected Coordinates"}
-            />
+          <>
+            {/* PUBLIC MODE VIEW */}
+            {appMode === "public" && (
+              <div className="space-y-6">
+                {/* Current Conditions Hero Card */}
+                <CurrentWeatherCard
+                  weather={weatherData}
+                  locationLabel={selectedLocation?.formatted_label || "Selected Coordinates"}
+                />
 
-            {/* 24-Hour Hourly Trend Curve */}
-            <HourlyChart hourly={weatherData.hourly} units={weatherData.units} />
+                {/* 24-Hour Hourly Trend Curve */}
+                <HourlyChart hourly={weatherData.hourly} units={weatherData.units} />
 
-            {/* Seven-Day Daily Summary */}
-            <DailyForecastList daily={weatherData.daily} units={weatherData.units} />
-          </div>
+                {/* Seven-Day Daily Summary */}
+                <DailyForecastList daily={weatherData.daily} units={weatherData.units} />
+
+                {/* Phase 3: Derived Scientific Weather Risk Indicators */}
+                <DerivedRiskCard riskData={riskData} loading={loadingRisk} />
+              </div>
+            )}
+
+            {/* FARMER MODE VIEW */}
+            {appMode === "farmer" && (
+              <div className="space-y-6">
+                {/* Phase 4: Gated Farmer Mode Agrometeorology Panel */}
+                <FarmerModePanel daily={weatherData.daily} />
+
+                {/* Current Weather Card */}
+                <CurrentWeatherCard
+                  weather={weatherData}
+                  locationLabel={selectedLocation?.formatted_label || "Selected Coordinates"}
+                />
+
+                {/* Seven-Day Daily Summary */}
+                <DailyForecastList daily={weatherData.daily} units={weatherData.units} />
+              </div>
+            )}
+          </>
         )}
 
-        {/* Worldwide Weather & Disaster Alerts Panel */}
+        {/* Phase 2: Worldwide Weather & Disaster Alerts Panel */}
         <GlobalAlertsPanel
           alertsData={alertsData}
           loading={loadingAlerts}
