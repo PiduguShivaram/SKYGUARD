@@ -2,6 +2,7 @@ import {
   DailyForecastPoint,
   FarmerWatchResponse,
   GeocodingResponse,
+  GlobalAlertsResponse,
   LocationSearchResult,
   RiskEvaluationResponse,
   WeatherForecastResponse,
@@ -36,9 +37,38 @@ export async function getForecast(latitude: number, longitude: number): Promise<
   return res.json();
 }
 
-export async function checkBackendHealth(): Promise<{ status: string; service: string; version: string }> {
-  const res = await fetch(`${API_BASE}/health`);
-  if (!res.ok) throw new Error("Backend unhealthy");
+export async function getGlobalAlerts(
+  countryCode?: string,
+  latitude?: number,
+  longitude?: number,
+  radiusKm: number = 1000
+): Promise<GlobalAlertsResponse> {
+  const params = new URLSearchParams();
+  if (countryCode) params.append("country_code", countryCode);
+  if (latitude !== undefined) params.append("latitude", latitude.toString());
+  if (longitude !== undefined) params.append("longitude", longitude.toString());
+  params.append("radius_km", radiusKm.toString());
+
+  const res = await fetch(`${API_BASE}/api/v1/alerts/global?${params.toString()}`);
+  if (!res.ok) {
+    const errorBody = await res.json().catch(() => ({}));
+    throw new Error(errorBody.detail || `Global alerts query failed (${res.status})`);
+  }
+  return res.json();
+}
+
+export async function checkBackendHealth(): Promise<{
+  status: string;
+  service: string;
+  version: string;
+  upstream_providers?: Record<string, string>;
+}> {
+  const res = await fetch(`${API_BASE}/api/health`);
+  if (!res.ok) {
+    const fallback = await fetch(`${API_BASE}/health`);
+    if (!fallback.ok) throw new Error("Backend unhealthy");
+    return fallback.json();
+  }
   return res.json();
 }
 

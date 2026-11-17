@@ -82,46 +82,56 @@ export interface WeatherForecastResponse {
   provenance: Provenance;
 }
 
-export type AlertSeverity =
-  | "Red Warning (Take Action)"
-  | "Orange Warning (Be Prepared)"
-  | "Yellow Warning (Be Updated)"
-  | "Green (No Warning / Normal)";
+// Worldwide Weather & Disaster Alerts (Phase 2)
+export type AlertCategory = "OFFICIAL_CAP_WARNING" | "GDACS_DISASTER_ALERT";
+export type AlertSeverity = "Extreme" | "Severe" | "Moderate" | "Minor" | "Unknown";
+export type ProviderHealthStatus = "CONNECTED" | "UNAVAILABLE" | "STALE";
 
-export type AlertProviderStatus =
-  | "CONNECTED"
-  | "SERVICE_UNAVAILABLE"
-  | "UNAUTHENTICATED"
-  | "NOT_CONFIGURED";
-
-export interface OfficialAlertItem {
+export interface GlobalAlertItem {
   id: string;
-  headline: string;
+  source_provider: string; // WMO SWIC, GDACS, Alert-Hub.org
+  alert_type: AlertCategory;
   event: string;
+  headline: string;
   severity: AlertSeverity;
-  effective: string;
-  expires: string;
-  area_description: string;
-  state: string;
-  district: string;
-  instruction?: string;
-  issuing_office: string;
+  severity_original?: string;
+  issuer: string;
+  country_code?: string;
+  affected_area: string;
+  latitude?: number;
+  longitude?: number;
+  effective_time?: string;
+  expires_time?: string;
+  description: string;
+  source_url: string;
+  distance_km?: number;
 }
 
-export interface OfficialAlertResponse {
-  provider_status: AlertProviderStatus;
-  official_agency: string;
-  query_location: string;
-  district?: string;
-  state?: string;
-  active_alerts: OfficialAlertItem[];
-  official_portal_url: string;
-  ndma_sachet_url: string;
-  unavailability_reason?: string;
-  setup_instructions?: string;
+export interface ProviderHealth {
+  provider_name: string;
+  status: ProviderHealthStatus;
+  total_alerts_fetched: number;
+  retrieved_at: string;
+  latency_ms: number;
+  error_message?: string;
+  attribution: string;
+}
+
+export interface GlobalAlertsResponse {
+  query_country?: string;
+  query_latitude?: number;
+  query_longitude?: number;
+  radius_km?: number;
+  total_official_warnings: number;
+  total_disaster_alerts: number;
+  official_cap_warnings: GlobalAlertItem[];
+  gdacs_disaster_alerts: GlobalAlertItem[];
+  providers_health: Record<string, ProviderHealth>;
+  coverage_notes: string;
   provenance: Provenance;
 }
 
+// Legacy / Helper Schemas
 export type RiskSeverity = "High" | "Moderate" | "Low";
 
 export interface RiskSignal {
@@ -167,5 +177,19 @@ export interface FarmerWatchResponse {
   days_since_sowing?: number;
   watches: FarmerWatchSignal[];
   hardware_gating: HardwareGatingStatus;
+  provenance: Provenance;
+}
+
+export interface OfficialAlertResponse {
+  provider_status: string;
+  official_agency: string;
+  query_location: string;
+  district?: string;
+  state?: string;
+  active_alerts: any[];
+  official_portal_url: string;
+  ndma_sachet_url: string;
+  unavailability_reason?: string;
+  setup_instructions?: string;
   provenance: Provenance;
 }
