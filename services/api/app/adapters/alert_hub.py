@@ -21,28 +21,40 @@ from services.api.app.schemas.global_alerts import (
     ProviderHealth,
     ProviderHealthStatus,
 )
+from services.api.app.services.geo_matcher import is_explicitly_country_wide
 
 ALERT_HUB_UNFILTERED_RSS_URL = "https://cap-alerts.s3.amazonaws.com/unfiltered/rss.xml"
 
 
-def determine_alerthub_severity(title: str, desc: str) -> Tuple[AlertSeverityLevel, Optional[str]]:
-    """Determine genuine CAP severity from Alert-Hub title and description.
+def determine_alerthub_severity(item: ET.Element) -> Tuple[AlertSeverityLevel, Optional[str]]:
+    """Determine genuine CAP severity from Alert-Hub XML tags.
     
-    Avoids defaulting all warning alerts to Extreme.
+    Zero keyword inference: Never assign Extreme, Severe, or Moderate based on
+    text keywords in the title or description. If original CAP severity is not
+    explicitly provided in XML, report UNKNOWN to preserve data integrity.
     """
-    text = (title + " " + desc).lower()
+    sev_el = item.find("severity")
+    if sev_el is None:
+        sev_el = item.find("{http://alert-hub.org/cap-extensions}severity")
+    if sev_el is None:
+        sev_el = item.find("{urn:oasis:names:tc:emergency:cap:1.2}severity")
 
-    if any(k in text for k in ["extreme danger", "catastrophic", "flash flood emergency", "tornado emergency", "hurricane warning"]):
-        return AlertSeverityLevel.EXTREME, "Extreme Threat Level"
-    if any(k in text for k in ["severe", "gale warning", "storm warning", "blizzard warning", "flood warning", "red warning"]):
-        return AlertSeverityLevel.SEVERE, "Severe Warning Level"
-    if any(k in text for k in ["watch", "advisory", "orange warning", "yellow warning", "special weather statement"]):
-        return AlertSeverityLevel.MODERATE, "Advisory / Watch Level"
-    if any(k in text for k in ["statement", "notice", "minor", "blue warning"]):
-        return AlertSeverityLevel.MINOR, "Minor / Informational Level"
+    if sev_el is not None and sev_el.text:
+        val = sev_el.text.strip().capitalize()
+        if val == "Extreme":
+            return AlertSeverityLevel.EXTREME, "Official CAP Extreme"
+        if val == "Severe":
+            return AlertSeverityLevel.SEVERE, "Official CAP Severe"
+        if val == "Moderate":
+            return AlertSeverityLevel.MODERATE, "Official CAP Moderate"
+        if val == "Minor":
+            return AlertSeverityLevel.MINOR, "Official CAP Minor"
+        return AlertSeverityLevel.UNKNOWN, f"Unrecognized CAP severity: {val}"
 
-    # Default to Moderate rather than inflating to Extreme
-    return AlertSeverityLevel.MODERATE, "Ingested CAP Bulletin"
+    return (
+        AlertSeverityLevel.UNKNOWN,
+        "Original CAP severity not provided in RSS feed summary; inspect raw CAP XML",
+    )
 
 
 class AlertHubAdapter:
@@ -139,9 +151,44 @@ class AlertHubAdapter:
                 ):
                     continue
 
-            # Severity determination
-            sev, sev_orig = determine_alerthub_severity(title, desc)
+            # Severity determination from explicit XML tags (zero keyword inference)
+            sev, sev_orig = determine_alerthub_severity(item)
             local_color = extract_local_color_code(title + " " + desc)
+
+            # Urgency and Certainty tags
+            urg_el = item.find("urgency")
+            if urg_el is None:
+                urg_el = item.find("{http://alert-hub.org/cap-extensions}urgency")
+            if urg_el is None:
+                urg_el = item.find("{urn:oasis:names:tc:emergency:cap:1.2}urgency")
+            urgency = (urg_el.text or "").strip().capitalize() if (urg_el is not None and urg_el.text) else "Unknown"
+
+            cert_el = item.find("certainty")
+            if cert_el is None:
+                cert_el = item.find("{http://alert-hub.org/cap-extensions}certainty")
+            if cert_el is None:
+                cert_el = item.find("{urn:oasis:names:tc:emergency:cap:1.2}certainty")
+            certainty = (cert_el.text or "").strip().capitalize() if (cert_el is not None and cert_el.text) else "Unknown"
+
+            # Polygons extraction
+            polygons: List[str] = []
+            for p_el in (
+                item.findall("polygon")
+                + item.findall("{http://alert-hub.org/cap-extensions}polygon")
+                + item.findall("{urn:oasis:names:tc:emergency:cap:1.2}polygon")
+            ):
+                if p_el.text and p_el.text.strip():
+                    polygons.append(p_el.text.strip())
+
+            # Evaluate geographic status and nationwide scope
+            area_desc = source_feed or item_country or "Territory"
+            is_countrywide = is_explicitly_country_wide(area_desc=area_desc, headline=title)
+            if polygons:
+                geo_status = "POLYGON_VERIFIED"
+            elif is_countrywide:
+                geo_status = "TERRITORY_NATIONAL"
+            else:
+                geo_status = "LOCATION_UNVERIFIED"
 
             # Message type
             msg_type = "Alert"
@@ -161,17 +208,20 @@ class AlertHubAdapter:
                 headline=title,
                 severity=sev,
                 severity_original=sev_orig,
-                urgency="Expected",
-                certainty="Likely",
+                urgency=urgency,
+                certainty=certainty,
                 local_color_code=local_color,
                 language=lang,
                 msg_type=msg_type,
                 issuer=issuer,
                 country_code=item_country or None,
-                affected_area=source_feed or item_country or "Territory",
+                affected_area=area_desc,
                 effective_time=pub_date or None,
                 description=desc,
                 source_url=link,
+                polygons=polygons,
+                is_country_wide=is_countrywide,
+                geographic_status=geo_status,
             )
 
             # Deduplicate by raw_id

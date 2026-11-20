@@ -39,6 +39,19 @@ class Settings(BaseSettings):
     VAPID_CLAIM_EMAIL: str = "mailto:alerts@skyguard.org"
     VAPID_KEY_FILE: str = "vapid_private.pem"
 
+    # Security & Background Worker Controls
+    INTERNAL_WORKER_KEY: str = "skyguard_internal_secret_worker_key_2026"
+    MAX_DELIVERY_RETRIES: int = 3
+    RETRY_BACKOFF_BASE_SECONDS: int = 60
+    ALLOWED_PUSH_GATEWAYS: List[str] = [
+        "fcm.googleapis.com",
+        "push.services.mozilla.com",
+        "updates.push.services.mozilla.com",
+        "push.apple.com",
+        "web.push.apple.com",
+        "notify.windows.com",
+    ]
+
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",

@@ -87,6 +87,12 @@ export type AlertCategory = "OFFICIAL_CAP_WARNING" | "GDACS_DISASTER_ALERT";
 export type AlertSeverity = "Extreme" | "Severe" | "Moderate" | "Minor" | "Unknown";
 export type ProviderHealthStatus = "CONNECTED" | "UNAVAILABLE" | "STALE";
 
+export type GeographicStatus =
+  | "POLYGON_VERIFIED"
+  | "COORDINATE_POINT"
+  | "TERRITORY_NATIONAL"
+  | "LOCATION_UNVERIFIED";
+
 export interface GlobalAlertItem {
   id: string;
   source_provider: string; // WMO SWIC, GDACS, Alert-Hub.org
@@ -110,6 +116,9 @@ export interface GlobalAlertItem {
   description: string;
   source_url: string;
   distance_km?: number;
+  polygons?: string[];
+  is_country_wide?: boolean;
+  geographic_status?: GeographicStatus;
 }
 
 export interface ProviderHealth {
@@ -215,6 +224,8 @@ export interface PushSubscribePayload {
   latitude?: number;
   longitude?: number;
   radius_km?: number;
+  wants_country_wide?: boolean;
+  existing_token?: string;
   categories?: AlertCategory[];
   min_severity?: AlertSeverity;
 }
@@ -229,6 +240,7 @@ export interface PushSubscribeResponse {
   latitude?: number;
   longitude?: number;
   radius_km: number;
+  wants_country_wide: boolean;
   created_at: string;
 }
 
@@ -241,6 +253,7 @@ export interface PushPreferencesResponse {
   latitude?: number;
   longitude?: number;
   radius_km: number;
+  wants_country_wide: boolean;
   is_active: boolean;
   created_at: string;
   updated_at: string;
@@ -253,6 +266,7 @@ export interface PushPreferencesUpdateRequest {
   latitude?: number;
   longitude?: number;
   radius_km?: number;
+  wants_country_wide?: boolean;
   is_active?: boolean;
 }
 

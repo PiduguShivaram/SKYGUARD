@@ -21,6 +21,7 @@ from services.api.app.schemas.global_alerts import (
     ProviderHealth,
     ProviderHealthStatus,
 )
+from services.api.app.services.geo_matcher import is_explicitly_country_wide
 
 WMO_SWIC_ALL_JSON_URL = "https://severeweather.wmo.int/json/wmo_all.json"
 WMO_CAP_BASE_URL = "https://severeweather.wmo.int/v2/cap-alerts"
@@ -181,6 +182,28 @@ class WMOCAPAdapter:
             raw_id = str(it.get("id") or cap_rel_url)
             alert_id = f"WMO-{raw_id}"
 
+            # Polygons and Coordinates
+            polygons: List[str] = []
+            raw_poly = it.get("polygon") or it.get("polygons")
+            if raw_poly:
+                if isinstance(raw_poly, list):
+                    polygons.extend([str(p).strip() for p in raw_poly if str(p).strip()])
+                elif isinstance(raw_poly, str) and raw_poly.strip():
+                    polygons.append(raw_poly.strip())
+
+            item_lat = float(it["lat"]) if "lat" in it and it["lat"] is not None else None
+            item_lon = float(it["lon"]) if "lon" in it and it["lon"] is not None else None
+
+            is_countrywide = is_explicitly_country_wide(area_desc=area_desc, headline=headline)
+            if polygons:
+                geo_status = "POLYGON_VERIFIED"
+            elif item_lat is not None and item_lon is not None:
+                geo_status = "COORDINATE_POINT"
+            elif is_countrywide:
+                geo_status = "TERRITORY_NATIONAL"
+            else:
+                geo_status = "LOCATION_UNVERIFIED"
+
             alert_item = GlobalAlertItem(
                 id=alert_id,
                 source_provider="WMO SWIC",
@@ -201,6 +224,11 @@ class WMOCAPAdapter:
                 expires_time=expires_time or None,
                 description=headline,
                 source_url=full_cap_url,
+                latitude=item_lat,
+                longitude=item_lon,
+                polygons=polygons,
+                is_country_wide=is_countrywide,
+                geographic_status=geo_status,
             )
 
             # Deduplication across languages for same raw_id

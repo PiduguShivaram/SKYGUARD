@@ -123,3 +123,45 @@ All browser Playwright verifications completed successfully!
 - `docs/screenshots/fixes_warangal_public.png`: Warangal public mode with strict territory filtering (`Filtered: IN`), honest 0 CAP warnings, authentic GDACS cyclone/flood reports, and NWP model-estimated conditions.
 - `docs/screenshots/fixes_worldwide_view.png`: Worldwide aggregate view showing 2,500+ authentic CAP warnings, local color codes (`[Level II/Orange]`, `[Level IV/Blue]`, etc.), authentic agency names, and genuine CAP source links.
 - `docs/screenshots/fixes_farmer_mode.png`: Farmer mode with `ICAR-AICRPAM / FAO Framework` attribution, `"No Forecast-Threshold Triggers Detected"` transparent disclaimer, and Agroclimatic Applicability Limitation box.
+- `docs/screenshots/skyguard_public_mode_verified.png`: Playwright verified production dashboard with NWP Model-Estimated Current Conditions and 24-hour SVG curve chart.
+- `docs/screenshots/skyguard_farmer_mode_verified.png`: Playwright verified agromet watches and strict hardware/satellite gating badges (`DISCONNECTED`, `GATED`).
+- `docs/screenshots/skyguard_push_modal_verified.png`: Playwright verified push notification center with opt-in "Receive Country-Wide Emergency Bulletins" toggle and privacy disclosure.
+
+---
+
+## 5. Production Hardening, Security & Reliability (Hardening Milestone)
+
+### 5.1 Geospatial Matching & Point-in-Polygon Engine
+- **Engine**: `services/api/app/services/geo_matcher.py` powered by Shapely 2.x.
+- **CAP 1.2 Coordinate Normalization**: CAP XML `<polygon>` coordinates specified as space-delimited `lat,lon` tokens are parsed, boundary-checked, inverted to `(lon, lat)` = `(x, y)` for Shapely, closed automatically, and checked with `make_valid` for self-intersection edge cases.
+- **Strict Local vs Country-Wide Separation**:
+  - Subscriptions matching an alert's country code are NOT notified if the alert specifies localized official polygons, unless the subscriber's coordinates fall inside the polygon or the subscriber explicitly opted in via `wants_country_wide = True`.
+  - Alerts with `LOCATION_UNVERIFIED` geographic status are suppressed from triggering automated location-targeted push notifications, preventing nationwide notification storms.
+
+### 5.2 Push Notification Security & SSRF Defense
+- **Worker Key Protection**: `POST /api/v1/push/dispatch-sync` protected by internal authorization dependency requiring `X-Worker-Key` matching `settings.INTERNAL_WORKER_KEY` (`HTTP 403 Forbidden` on mismatch/absence).
+- **Anti-Takeover Protection**: Re-registration of active push endpoints strictly enforces secret client possession token verification. Attempts to hijack an endpoint without token return `HTTP 409 Conflict`.
+- **SSRF Defense with DNS Resolution**: `validate_push_endpoint()` enforces HTTPS on port 443, whitelist domain matching (`ALLOWED_PUSH_GATEWAYS`), and performs DNS resolution checks blocking private, loopback, link-local, and reserved IP addresses.
+- **Delivery Guarantees**:
+  - Web push gateway acceptance (HTTP 201/200) is tracked as `GATEWAY_ACCEPTED` with gateway receipt (`HTTP_201`) recorded, distinct from client display.
+  - Permanent failures (HTTP 410/404) immediately mark delivery as `PERMANENT_FAILURE` and deactivate subscription (`is_active = False`).
+  - Transient network or rate-limit failures (HTTP 429, 5xx) mark delivery as `TRANSIENT_FAILURE` and schedule exponential backoff retries (`next_retry_at`).
+  - Implemented `retry_transient_deliveries()` and background `alert_worker.py`.
+
+### 5.3 Zero Keyword Severity Inference
+- Alert-Hub adapter completely removes keyword-based severity inflation. If the raw XML lacks a genuine `<severity>` tag, it reports `AlertSeverityLevel.UNKNOWN` with explicit disclosure `"Original CAP severity not provided in RSS feed summary; inspect raw CAP XML"`.
+
+### 5.4 Test Suite Summary: 31/31 Offline Tests & 8/8 Live Tests Passing
+- `test_production_security_geo.py`:
+  - `test_parse_cap_polygon_coordinate_inversion_and_closure` PASSED
+  - `test_local_vs_country_wide_spatial_matching` PASSED
+  - `test_location_unverified_alert_suppressed_for_precision_notifications` PASSED
+  - `test_push_endpoint_ssrf_blocking` PASSED
+  - `test_endpoint_possession_and_anti_takeover` PASSED
+  - `test_worker_key_authorization_on_dispatch_sync` PASSED
+  - `test_transient_failure_retry_and_dead_endpoint_deactivation` PASSED
+  - `test_alerthub_zero_keyword_severity_inference` PASSED
+- Total offline pytest test count: **31 passed**
+- Total live integration test count: **8 passed**
+- Next.js production build: **Passed (`next build` compiled successfully)**
+- Playwright browser E2E test: **Passed (all 13 user journeys verified)**

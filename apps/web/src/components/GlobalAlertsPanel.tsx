@@ -90,6 +90,49 @@ export const GlobalAlertsPanel: React.FC<GlobalAlertsPanelProps> = ({
     return "bg-slate-800 text-slate-300 border-slate-700";
   };
 
+  const renderGeographicBadge = (status?: string) => {
+    switch (status) {
+      case "POLYGON_VERIFIED":
+        return (
+          <span
+            className="text-[10px] font-mono font-bold px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/30"
+            title="Boundary strictly verified against official source polygon"
+          >
+            Polygon Verified
+          </span>
+        );
+      case "COORDINATE_POINT":
+        return (
+          <span
+            className="text-[10px] font-mono font-bold px-1.5 py-0.5 rounded bg-cyan-500/20 text-cyan-300 border border-cyan-500/30"
+            title="Authentic centroid coordinate point provided"
+          >
+            Point Location
+          </span>
+        );
+      case "TERRITORY_NATIONAL":
+        return (
+          <span
+            className="text-[10px] font-mono font-bold px-1.5 py-0.5 rounded bg-purple-500/20 text-purple-300 border border-purple-500/30"
+            title="Explicit country-wide or territorial emergency scope"
+          >
+            Territory / National
+          </span>
+        );
+      case "LOCATION_UNVERIFIED":
+        return (
+          <span
+            className="text-[10px] font-mono font-bold px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/30"
+            title="Specific polygon not provided in feed summary; precision location unverified"
+          >
+            Location Unverified
+          </span>
+        );
+      default:
+        return null;
+    }
+  };
+
   const getDisasterIcon = (event: string) => {
     const ev = event.toLowerCase();
     if (ev.includes("cyclone") || ev.includes("hurricane") || ev.includes("typhoon")) {
@@ -310,6 +353,10 @@ export const GlobalAlertsPanel: React.FC<GlobalAlertsPanelProps> = ({
                 >
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                     <div className="flex items-center gap-2 flex-wrap">
+                      <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-blue-500/20 text-blue-300 border border-blue-500/30">
+                        Official CAP Warning
+                      </span>
+
                       <span className={`text-[11px] font-bold px-2 py-0.5 rounded-md ${getSeverityBadgeClass(alert.severity)}`}>
                         {alert.severity}
                       </span>
@@ -319,6 +366,8 @@ export const GlobalAlertsPanel: React.FC<GlobalAlertsPanelProps> = ({
                           {alert.local_color_code}
                         </span>
                       )}
+
+                      {renderGeographicBadge(alert.geographic_status)}
 
                       {alert.msg_type === "Cancel" && (
                         <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-rose-500/20 text-rose-300 border border-rose-500/40">
@@ -422,13 +471,17 @@ export const GlobalAlertsPanel: React.FC<GlobalAlertsPanelProps> = ({
                   className="p-4 rounded-xl bg-slate-850/60 border border-slate-750 hover:border-slate-700 transition-colors"
                 >
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 flex-wrap">
                       <div className="p-1.5 rounded-lg bg-slate-900 border border-slate-800">
                         {getDisasterIcon(disaster.event)}
                       </div>
+                      <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-orange-500/20 text-orange-300 border border-orange-500/30">
+                        GDACS Disaster Intelligence
+                      </span>
                       <span className={`text-[11px] font-bold px-2 py-0.5 rounded-md ${getSeverityBadgeClass(disaster.severity)}`}>
                         {disaster.severity}
                       </span>
+                      {renderGeographicBadge(disaster.geographic_status)}
                       <span className="text-xs font-bold text-white">{disaster.event}</span>
                       {disaster.country_code && (
                         <span className="text-[11px] font-mono text-slate-400">

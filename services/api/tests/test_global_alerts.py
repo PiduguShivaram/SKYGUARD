@@ -12,7 +12,7 @@ from services.api.app.schemas.global_alerts import AlertCategoryEnum, ProviderHe
 @pytest.mark.live
 @pytest.mark.asyncio
 async def test_live_gdacs_adapter():
-    alerts, health = await gdacs_adapter.fetch_alerts()
+    alerts, health, total = await gdacs_adapter.fetch_alerts()
     assert health.status == ProviderHealthStatus.CONNECTED
     assert health.total_alerts_fetched > 0
     assert len(alerts) > 0
@@ -26,7 +26,7 @@ async def test_live_gdacs_adapter():
 @pytest.mark.live
 @pytest.mark.asyncio
 async def test_live_wmo_adapter():
-    alerts, health = await wmo_adapter.fetch_alerts()
+    alerts, health, total = await wmo_adapter.fetch_alerts()
     assert health.status == ProviderHealthStatus.CONNECTED
     assert health.total_alerts_fetched > 0
     assert len(alerts) > 0
@@ -40,7 +40,7 @@ async def test_live_wmo_adapter():
 @pytest.mark.live
 @pytest.mark.asyncio
 async def test_live_alerthub_adapter():
-    alerts, health = await alert_hub_adapter.fetch_alerts()
+    alerts, health, total = await alert_hub_adapter.fetch_alerts()
     assert health.status == ProviderHealthStatus.CONNECTED
     assert health.total_alerts_fetched > 0
     assert len(alerts) > 0

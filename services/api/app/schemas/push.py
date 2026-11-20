@@ -16,6 +16,14 @@ class PushSubscribeRequest(BaseModel):
     latitude: Optional[float] = Field(None, ge=-90.0, le=90.0, description="Optional latitude for proximity matching")
     longitude: Optional[float] = Field(None, ge=-180.0, le=180.0, description="Optional longitude for proximity matching")
     radius_km: Optional[float] = Field(500.0, ge=10.0, le=20000.0, description="Geographic matching radius in km")
+    wants_country_wide: bool = Field(
+        False,
+        description="Whether user explicitly opted in to receive all country-wide warning bulletins for their selected country",
+    )
+    existing_token: Optional[str] = Field(
+        None,
+        description="Existing secret possession token, required if updating an existing active push endpoint to prevent takeover",
+    )
     categories: Optional[List[str]] = Field(
         default=["OFFICIAL_CAP_WARNING", "GDACS_DISASTER_ALERT"],
         description="Subscribed alert types",
@@ -39,6 +47,7 @@ class PushSubscribeResponse(BaseModel):
     latitude: Optional[float]
     longitude: Optional[float]
     radius_km: float
+    wants_country_wide: bool
     created_at: datetime
 
 
@@ -51,6 +60,7 @@ class PushPreferencesResponse(BaseModel):
     latitude: Optional[float]
     longitude: Optional[float]
     radius_km: float
+    wants_country_wide: bool
     is_active: bool
     created_at: datetime
     updated_at: datetime
@@ -63,6 +73,7 @@ class PushPreferencesUpdateRequest(BaseModel):
     latitude: Optional[float] = Field(None, ge=-90.0, le=90.0)
     longitude: Optional[float] = Field(None, ge=-180.0, le=180.0)
     radius_km: Optional[float] = Field(None, ge=10.0, le=20000.0)
+    wants_country_wide: Optional[bool] = None
     is_active: Optional[bool] = None
 
 

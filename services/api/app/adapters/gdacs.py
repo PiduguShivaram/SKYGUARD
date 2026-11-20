@@ -19,6 +19,7 @@ from services.api.app.schemas.global_alerts import (
     ProviderHealth,
     ProviderHealthStatus,
 )
+from services.api.app.services.geo_matcher import is_explicitly_country_wide
 
 GDACS_GEOJSON_URL = "https://www.gdacs.org/gdacsapi/api/events/geteventlist/SEARCH?format=geojson"
 GDACS_RSS_URL = "https://www.gdacs.org/xml/rss.xml"
@@ -47,9 +48,9 @@ def map_gdacs_severity(alert_level: Optional[str]) -> AlertSeverityLevel:
 
 
 class GDACSAdapter:
-    def __init__(self, timeout: float = 12.0):
+    def __init__(self, timeout: float = 20.0):
         self.url = GDACS_GEOJSON_URL
-        self.timeout = httpx.Timeout(timeout, connect=5.0)
+        self.timeout = httpx.Timeout(timeout, connect=8.0)
 
     async def fetch_alerts(
         self,
@@ -142,6 +143,11 @@ class GDACSAdapter:
                 matches_spatial = dist_km <= radius_km
 
             if matches_country and matches_spatial:
+                is_countrywide = is_explicitly_country_wide(area_desc=area_desc or country_str, headline=name)
+                geo_status = "COORDINATE_POINT" if (lat is not None and lon is not None) else (
+                    "TERRITORY_NATIONAL" if is_countrywide else "LOCATION_UNVERIFIED"
+                )
+
                 item = GlobalAlertItem(
                     id=alert_id,
                     source_provider="GDACS",
@@ -165,6 +171,9 @@ class GDACSAdapter:
                     description=desc,
                     source_url=report_url,
                     distance_km=round(dist_km, 1) if dist_km is not None else None,
+                    polygons=[],
+                    is_country_wide=is_countrywide,
+                    geographic_status=geo_status,
                 )
                 normalized.append(item)
 

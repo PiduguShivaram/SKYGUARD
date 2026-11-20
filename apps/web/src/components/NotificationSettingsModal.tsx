@@ -67,6 +67,7 @@ export const NotificationSettingsModal: React.FC<NotificationSettingsModalProps>
   // Preferences
   const [countryCode, setCountryCode] = useState<string>(selectedCountry || "IN");
   const [radiusKm, setRadiusKm] = useState<number>(500);
+  const [wantsCountryWide, setWantsCountryWide] = useState<boolean>(false);
   const [selectedCategories, setSelectedCategories] = useState<AlertCategory[]>([
     "OFFICIAL_CAP_WARNING",
     "GDACS_DISASTER_ALERT",
@@ -102,6 +103,7 @@ export const NotificationSettingsModal: React.FC<NotificationSettingsModalProps>
         .then((prefs) => {
           if (prefs.country_code) setCountryCode(prefs.country_code);
           if (prefs.radius_km) setRadiusKm(prefs.radius_km);
+          if (prefs.wants_country_wide !== undefined) setWantsCountryWide(prefs.wants_country_wide);
           if (prefs.categories) setSelectedCategories(prefs.categories);
           if (prefs.min_severity) setMinSeverity(prefs.min_severity);
           setIsSubscribed(prefs.is_active);
@@ -155,6 +157,8 @@ export const NotificationSettingsModal: React.FC<NotificationSettingsModalProps>
         throw new Error("Browser returned incomplete push subscription keys.");
       }
 
+      const savedToken = localStorage.getItem("skyguard_push_token") || undefined;
+
       // Register with SkyGuard backend
       const res = await subscribePush({
         endpoint: subJson.endpoint,
@@ -166,6 +170,8 @@ export const NotificationSettingsModal: React.FC<NotificationSettingsModalProps>
         latitude: selectedLatitude,
         longitude: selectedLongitude,
         radius_km: radiusKm,
+        wants_country_wide: wantsCountryWide,
+        existing_token: savedToken,
         categories: selectedCategories,
         min_severity: minSeverity,
       });
@@ -229,6 +235,7 @@ export const NotificationSettingsModal: React.FC<NotificationSettingsModalProps>
       await updatePushPreferences(possessionToken, {
         country_code: countryCode.trim() ? countryCode.toUpperCase() : undefined,
         radius_km: radiusKm,
+        wants_country_wide: wantsCountryWide,
         categories: selectedCategories,
         min_severity: minSeverity,
       });
@@ -390,6 +397,26 @@ export const NotificationSettingsModal: React.FC<NotificationSettingsModalProps>
                 <option value={1000}>Within 1,000 km</option>
               </select>
             </div>
+          </div>
+
+          {/* Country-Wide Bulletins Toggle (Opt-in) */}
+          <div className="p-3 rounded-xl bg-slate-850/80 border border-slate-750 space-y-1.5">
+            <label className="flex items-start gap-2.5 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={wantsCountryWide}
+                onChange={(e) => setWantsCountryWide(e.target.checked)}
+                className="mt-0.5 rounded text-blue-600 focus:ring-blue-500 bg-slate-900 border-slate-700"
+              />
+              <div>
+                <span className="text-xs font-semibold text-white">
+                  Receive Country-Wide Emergency Bulletins
+                </span>
+                <p className="text-[11px] text-slate-400 mt-0.5 leading-relaxed">
+                  Opt in to receive official national emergency bulletins affecting your entire country even if an alert polygon is outside your immediate coordinates. When disabled, you only receive localized notifications verified within your coordinates.
+                </p>
+              </div>
+            </label>
           </div>
 
           {/* Alert Categories */}

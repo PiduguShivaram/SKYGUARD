@@ -33,7 +33,15 @@ SkyGuard is built from the ground up on an **absolute zero-fabrication contract*
    - Experimental derived indicators based on physical IMD, WMO, and NDMA thresholds (Heavy Rainfall, Extreme Heatwaves, High Wind Squalls).
    - Strict categorical separation: derived heuristics are prominently labeled `EXPERIMENTAL` and never masquerade as official warnings.
 
-4. **Gated Farmer Mode (Phase 4)**:
+4. **Privacy-Preserving Web Push Notifications (Production Hardened)**:
+   - Possession-bound browser Web Push subscriptions via VAPID RFC 8292.
+   - **Shapely 2.x Point-in-Polygon Engine**: Strict geometric verification against official CAP polygons. Localized alerts never trigger unverified push notifications in other cities within the same country unless the user explicitly opts in to Country-Wide Emergency Bulletins.
+   - **SSRF Defense with DNS Resolution**: Validates HTTPS on port 443 against whitelisted gateways (`fcm.googleapis.com`, `*.push.services.mozilla.com`, `*.push.apple.com`, `*.notify.windows.com`) and resolves IPs to prevent private/loopback/link-local SSRF.
+   - **Anti-Takeover Security**: Modifications to active subscriptions strictly require possession token verification.
+   - **Worker Authorization Key**: Synchronization dispatches (`/api/v1/push/dispatch-sync`) require internal authorization (`X-Worker-Key`).
+   - **Delivery Guarantees**: Distinguishes Gateway Acceptance (`GATEWAY_ACCEPTED`) from client display, records gateway receipts, executes exponential backoff retries for transient errors, and automatically deactivates permanently dead endpoints (HTTP 410/404).
+
+5. **Gated Farmer Mode (Phase 4)**:
    - Dedicated agrometeorological mode tailored to crop moisture thresholds and thermal vulnerability for Paddy, Cotton, Maize, Wheat, Soybean, and Tomato.
    - Computes operational watches (extended dry spells, waterlogging/drainage needs, crop canopy thermal stress) referencing ICAR advisory guidelines.
    - **Strict Hardware Gating**: In-situ soil moisture sensors (`DISCONNECTED`), Sentinel-2 multi-spectral NDVI (`GATED`), and plot-level yield loss models (`GATED`) remain disabled until genuine hardware or authenticated services are provisioned.

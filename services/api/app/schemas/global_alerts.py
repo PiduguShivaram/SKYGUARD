@@ -44,6 +44,22 @@ class GlobalAlertItem(BaseModel):
     affected_area: str = Field(..., description="Official area description or territory name")
     latitude: Optional[float] = Field(None, description="Centroid or point latitude if officially supplied")
     longitude: Optional[float] = Field(None, description="Centroid or point longitude if officially supplied")
+    polygons: Optional[List[List[List[float]]]] = Field(
+        None,
+        description="GeoJSON-compliant polygon rings [[[lon, lat], ...]] parsed from official CAP <polygon> or GDACS footprints",
+    )
+    geocodes: Optional[List[Dict[str, str]]] = Field(
+        None,
+        description="Official administrative geocodes (FIPS, SAME, NUTS, etc.)",
+    )
+    is_country_wide: bool = Field(
+        False,
+        description="True if alert explicitly covers the entire national territory, rather than regional/local areas",
+    )
+    geographic_status: str = Field(
+        "LOCATION_VERIFIED",
+        description="LOCATION_VERIFIED or LOCATION_UNVERIFIED",
+    )
     effective_time: Optional[str] = Field(None, description="Start/effective timestamp")
     expires_time: Optional[str] = Field(None, description="Expiry timestamp")
     description: str = Field(..., description="Detailed description or bulletin extract")

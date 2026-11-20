@@ -47,7 +47,7 @@ async def run_e2e_verification():
 
         # Step 5: Wait for live weather card to appear
         print("Waiting for live weather card to appear...")
-        await page.wait_for_selector("text=Current Weather Observation", timeout=15000)
+        await page.wait_for_selector("text=NWP Model-Estimated Current Conditions", timeout=15000)
 
         # Step 6: Verify rendered genuine weather metrics
         location_header = await page.locator("h2").first.text_content()
@@ -154,6 +154,10 @@ async def run_e2e_verification():
         cat_gdacs = await page.get_by_text("GDACS Multi-Hazard Disasters", exact=True).is_visible()
         assert cat_cap, "Official CAP category option must be visible"
         assert cat_gdacs, "GDACS disaster category option must be visible"
+
+        # Verify Country-Wide Bulletins Toggle (Opt-In Security Feature)
+        country_wide_toggle = await page.locator("text=Receive Country-Wide Emergency Bulletins").is_visible()
+        assert country_wide_toggle, "Receive Country-Wide Emergency Bulletins toggle must be visible"
 
         # Verify Privacy and Integrity Invariant Notice
         privacy_notice = await page.locator("text=Privacy & Data Integrity Invariants:").is_visible()

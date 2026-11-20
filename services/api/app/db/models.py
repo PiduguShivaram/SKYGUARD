@@ -36,12 +36,14 @@ class PushSubscription(Base):
     latitude = Column(Float, nullable=True)
     longitude = Column(Float, nullable=True)
     radius_km = Column(Float, nullable=False, default=500.0)
+    wants_country_wide = Column(Boolean, nullable=False, default=False)
 
     # Filtering preferences
     categories = Column(Text, nullable=False, default='["OFFICIAL_CAP_WARNING", "GDACS_DISASTER_ALERT"]')
     min_severity = Column(String(16), nullable=False, default="Moderate")
 
     is_active = Column(Boolean, nullable=False, default=True, index=True)
+    last_seen_at = Column(DateTime(timezone=True), nullable=True)
     created_at = Column(DateTime(timezone=True), nullable=False, default=utc_now)
     updated_at = Column(DateTime(timezone=True), nullable=False, default=utc_now, onupdate=utc_now)
 
@@ -51,7 +53,7 @@ class PushSubscription(Base):
 
 
 class NotificationDelivery(Base):
-    """Delivery attempt log with idempotency keys to prevent notification storms."""
+    """Delivery attempt log with idempotency keys and retry scheduling."""
 
     __tablename__ = "notification_deliveries"
 
@@ -66,12 +68,17 @@ class NotificationDelivery(Base):
     idempotency_key = Column(String(192), nullable=False, unique=True, index=True)
 
     delivered_at = Column(DateTime(timezone=True), nullable=False, default=utc_now)
-    status = Column(String(32), nullable=False)  # SUCCESS, FAILED, EXPIRED, FILTERED_OUT
+    # GATEWAY_ACCEPTED, TRANSIENT_FAILURE, PERMANENT_FAILURE, FILTERED_OUT
+    status = Column(String(32), nullable=False)
     http_status = Column(Integer, nullable=True)
+    retry_count = Column(Integer, nullable=False, default=0)
+    next_retry_at = Column(DateTime(timezone=True), nullable=True)
+    gateway_receipt = Column(String(128), nullable=True)
     error_message = Column(Text, nullable=True)
 
     __table_args__ = (
         UniqueConstraint("subscription_id", "alert_id", name="uq_subscription_alert"),
+        Index("idx_delivery_retry", "status", "next_retry_at"),
     )
 
 
@@ -96,6 +103,10 @@ class AlertRecord(Base):
     affected_area = Column(Text, nullable=False)
     latitude = Column(Float, nullable=True)
     longitude = Column(Float, nullable=True)
+    polygons_json = Column(Text, nullable=True)
+    geocodes_json = Column(Text, nullable=True)
+    is_country_wide = Column(Boolean, nullable=False, default=False)
+    geographic_status = Column(String(32), nullable=False, default="LOCATION_VERIFIED")
     effective_time = Column(String(64), nullable=True)
     expires_time = Column(String(64), nullable=True)
     description = Column(Text, nullable=False)
@@ -106,4 +117,5 @@ class AlertRecord(Base):
 
     __table_args__ = (
         Index("idx_alert_active_type", "is_active", "alert_type"),
+        Index("idx_alert_country_active", "country_code", "is_active"),
     )
