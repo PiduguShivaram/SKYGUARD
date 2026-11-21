@@ -155,12 +155,26 @@ jobs:
       - name: Start FastAPI backend daemon
         run: |
           PYTHONPATH=. uvicorn services.api.app.main:app --host 127.0.0.1 --port 8000 &
-          sleep 4
+          for i in {1..30}; do
+            if curl -s http://127.0.0.1:8000/health > /dev/null; then
+              echo "FastAPI backend is ready!"
+              break
+            fi
+            echo "Waiting for FastAPI backend to respond..."
+            sleep 1
+          done
 
       - name: Start Next.js frontend daemon
         run: |
           pnpm --filter web start -p 3000 &
-          sleep 4
+          for i in {1..30}; do
+            if curl -s http://127.0.0.1:3000 > /dev/null; then
+              echo "Next.js frontend is ready!"
+              break
+            fi
+            echo "Waiting for Next.js frontend to respond..."
+            sleep 1
+          done
 
       - name: Run 5 Playwright E2E Test Suites
         run: |

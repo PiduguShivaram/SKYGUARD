@@ -27,12 +27,13 @@ async def test_playwright_public_mode_multi_location():
         assert "SkyGuard" in title
 
         # Verify initial prompt
-        initial_prompt = await page.locator("text=Ready for Global Weather & Disaster Intelligence").is_visible()
-        assert initial_prompt, "Initial prompt must be visible when no location is selected"
+        await page.wait_for_selector("text=Ready for Global Weather & Disaster Intelligence", timeout=15000)
+        await page.wait_for_timeout(1000)
 
         # Click Warangal chip
-        await page.locator("button:has-text('Warangal')").click()
-        await page.wait_for_selector("text=NWP Model-Estimated Current Conditions", timeout=15000)
+        warangal_btn = page.locator("button:has-text('Warangal')")
+        await warangal_btn.click()
+        await page.wait_for_selector("text=NWP Model-Estimated Current Conditions", timeout=25000)
 
         # Check NWP model disclosure and grid coordinates
         header = await page.locator("h2").first.text_content()
@@ -45,8 +46,7 @@ async def test_playwright_public_mode_multi_location():
         assert chart_svg, "24-Hour forecast chart SVG must be visible"
 
         # Check Derived Risk Indicators (Phase 3)
-        risk_card = await page.locator("text=Derived Weather Risk Indicators").is_visible()
-        assert risk_card, "Derived Weather Risk Indicators must be visible"
+        await page.wait_for_selector("text=Derived Weather Risk Indicators", timeout=15000)
         assert await page.locator("text=EXPERIMENTAL").is_visible(), "EXPERIMENTAL badge must be visible"
 
         # Save public mode screenshot
@@ -67,29 +67,29 @@ async def test_playwright_farmer_mode_crop_stress():
         page = await context.new_page()
 
         await page.goto("http://localhost:3000", wait_until="networkidle")
-        await page.locator("button:has-text('Warangal')").click()
-        await page.wait_for_selector("text=NWP Model-Estimated Current Conditions", timeout=15000)
+        await page.wait_for_selector("text=Ready for Global Weather & Disaster Intelligence", timeout=15000)
+        await page.wait_for_timeout(1000)
+
+        warangal_btn = page.locator("button:has-text('Warangal')")
+        await warangal_btn.click()
+        await page.wait_for_selector("text=NWP Model-Estimated Current Conditions", timeout=25000)
 
         # Switch to Farmer Mode
-        await page.locator("button:has-text('Farmer Mode')").click()
-        await page.wait_for_timeout(800)
-
-        # Verify Farmer Mode Panel
-        assert await page.locator("text=Farmer Mode — Agrometeorological Intelligence").is_visible()
+        farmer_btn = page.locator("button:has-text('Farmer Mode')")
+        await farmer_btn.wait_for(state="visible", timeout=10000)
+        await farmer_btn.click()
+        await page.wait_for_selector("text=Farmer Mode — Agrometeorological Intelligence", timeout=10000)
 
         # Test selecting different crops
         crop_select = page.locator("select")
         for crop in ["Cotton", "Maize", "Tomato"]:
             await crop_select.select_option(crop)
-            await page.wait_for_timeout(400)
-            watches_header = await page.locator(f"text=Field Agromet Watches for {crop}").is_visible()
-            assert watches_header, f"Agromet watches header for {crop} must be visible"
+            await page.wait_for_selector(f"text=Field Agromet Watches for {crop}", timeout=10000)
 
         # Test sowing date input
         date_input = page.locator("input[type='date']")
         await date_input.fill("2026-05-01")
-        await page.wait_for_timeout(500)
-        assert await page.locator("text=/days since sowing/").is_visible()
+        await page.wait_for_selector("text=/days since sowing/", timeout=10000)
 
         # Verify hardware gating invariant badges
         assert await page.locator("text=DISCONNECTED").is_visible()
@@ -111,12 +111,13 @@ async def test_playwright_push_notification_settings():
         page = await context.new_page()
 
         await page.goto("http://localhost:3000", wait_until="networkidle")
+        await page.wait_for_timeout(1000)
 
         # Open push settings modal
         bell_btn = page.locator("button[title='Global Push Notification Settings']")
-        assert await bell_btn.is_visible()
+        await bell_btn.wait_for(state="visible", timeout=10000)
         await bell_btn.click()
-        await page.wait_for_timeout(500)
+        await page.wait_for_selector("text=Global Push Notification Center", timeout=10000)
 
         # Check modal title and elements
         assert await page.locator("text=Global Push Notification Center").is_visible()
