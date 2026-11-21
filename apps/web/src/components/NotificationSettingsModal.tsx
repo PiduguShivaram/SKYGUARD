@@ -73,6 +73,7 @@ export const NotificationSettingsModal: React.FC<NotificationSettingsModalProps>
     "GDACS_DISASTER_ALERT",
   ]);
   const [minSeverity, setMinSeverity] = useState<AlertSeverity>("Moderate");
+  const [loadingPreferences, setLoadingPreferences] = useState<boolean>(false);
 
   const [loading, setLoading] = useState<boolean>(false);
   const [testStatus, setTestStatus] = useState<string | null>(null);
@@ -90,6 +91,7 @@ export const NotificationSettingsModal: React.FC<NotificationSettingsModalProps>
 
     setPermission(Notification.permission as PushPermissionStatus);
 
+    let isActive = true;
     const savedSubId = localStorage.getItem("skyguard_push_sub_id");
     const savedToken = localStorage.getItem("skyguard_push_token");
 
@@ -97,10 +99,12 @@ export const NotificationSettingsModal: React.FC<NotificationSettingsModalProps>
       setSubscriptionId(savedSubId);
       setPossessionToken(savedToken);
       setIsSubscribed(true);
+      setLoadingPreferences(true);
 
       // Fetch fresh preferences from backend
       getPushPreferences(savedToken)
         .then((prefs) => {
+          if (!isActive) return;
           if (prefs.country_code) setCountryCode(prefs.country_code);
           if (prefs.radius_km) setRadiusKm(prefs.radius_km);
           if (prefs.wants_country_wide !== undefined) setWantsCountryWide(prefs.wants_country_wide);
@@ -108,13 +112,27 @@ export const NotificationSettingsModal: React.FC<NotificationSettingsModalProps>
           if (prefs.min_severity) setMinSeverity(prefs.min_severity);
           setIsSubscribed(prefs.is_active);
         })
-        .catch(() => {
-          // Token expired or invalid
-          localStorage.removeItem("skyguard_push_sub_id");
-          localStorage.removeItem("skyguard_push_token");
-          setIsSubscribed(false);
+        .catch((err) => {
+          if (!isActive) return;
+          const msg = (err?.message || "").toLowerCase();
+          if (msg.includes("401") || msg.includes("403") || msg.includes("token") || msg.includes("unauthorized")) {
+            // Definitively invalid or expired token
+            localStorage.removeItem("skyguard_push_sub_id");
+            localStorage.removeItem("skyguard_push_token");
+            setIsSubscribed(false);
+          } else {
+            // Network or 503 error: retain credentials and allow retry
+            console.warn("Transient error loading push preferences, retaining credentials:", err);
+          }
+        })
+        .finally(() => {
+          if (isActive) setLoadingPreferences(false);
         });
     }
+
+    return () => {
+      isActive = false;
+    };
   }, [isOpen]);
 
   if (!isOpen) return null;
@@ -485,10 +503,10 @@ export const NotificationSettingsModal: React.FC<NotificationSettingsModalProps>
             <div className="flex flex-col sm:flex-row items-center gap-2 pt-2">
               <button
                 onClick={handleSavePreferences}
-                disabled={loading}
-                className="w-full sm:flex-1 py-2 bg-slate-800 hover:bg-slate-750 border border-slate-700 text-white rounded-xl text-xs font-semibold transition-colors"
+                disabled={loading || loadingPreferences}
+                className="w-full sm:flex-1 py-2 bg-slate-800 hover:bg-slate-750 border border-slate-700 text-white rounded-xl text-xs font-semibold transition-colors disabled:opacity-50"
               >
-                Save Preferences
+                {loadingPreferences ? "Loading Preferences..." : "Save Preferences"}
               </button>
 
               <button

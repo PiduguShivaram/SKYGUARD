@@ -151,17 +151,73 @@ All browser Playwright verifications completed successfully!
 ### 5.3 Zero Keyword Severity Inference
 - Alert-Hub adapter completely removes keyword-based severity inflation. If the raw XML lacks a genuine `<severity>` tag, it reports `AlertSeverityLevel.UNKNOWN` with explicit disclosure `"Original CAP severity not provided in RSS feed summary; inspect raw CAP XML"`.
 
-### 5.4 Test Suite Summary: 31/31 Offline Tests & 8/8 Live Tests Passing
-- `test_production_security_geo.py`:
-  - `test_parse_cap_polygon_coordinate_inversion_and_closure` PASSED
-  - `test_local_vs_country_wide_spatial_matching` PASSED
-  - `test_location_unverified_alert_suppressed_for_precision_notifications` PASSED
-  - `test_push_endpoint_ssrf_blocking` PASSED
-  - `test_endpoint_possession_and_anti_takeover` PASSED
-  - `test_worker_key_authorization_on_dispatch_sync` PASSED
-  - `test_transient_failure_retry_and_dead_endpoint_deactivation` PASSED
-  - `test_alerthub_zero_keyword_severity_inference` PASSED
-- Total offline pytest test count: **31 passed**
-- Total live integration test count: **8 passed**
-- Next.js production build: **Passed (`next build` compiled successfully)**
-- Playwright browser E2E test: **Passed (all 13 user journeys verified)**
+### 5.4 Test Suite Summary: Offline & Live Verification Reconciliation
+
+#### Test Count Reconciliation Across Revisions:
+- **Revision `303c82a` (Initial Hardening Baseline)**:
+  - 31 offline unit, security, and schema tests executed via `pytest services/api/tests/ -v -m "not live"`.
+  - 8 live integration tests querying upstream endpoints marked `@pytest.mark.live`.
+- **Revision `2e324b6` / `fddf277` (Full Stress & Concurrency Hardening Matrix)**:
+  - Added 7 stress, pathological geometry, and concurrency tests in `services/api/tests/test_stress_and_hardening.py`.
+  - Consolidated live upstream markers onto `test_health_with_providers` and `test_live_country_filtering_no_china_leak_for_in`.
+  - Verified total: **36 offline tests PASSED**, **10 live upstream tests DESELECTED** during offline CI runs (`-m "not live"`).
+
+#### Verified Offline Execution Output (`pytest services/api/tests/ -v -m "not live"`):
+```text
+collected 46 items / 10 deselected / 36 selected
+
+services/api/tests/test_alert_quality_fixes.py::test_strict_country_matching_prevents_substring_leaks PASSED
+services/api/tests/test_alert_quality_fixes.py::test_iso_normalization PASSED
+services/api/tests/test_alert_quality_fixes.py::test_wmo_priority_severity_mapping PASSED
+services/api/tests/test_alert_quality_fixes.py::test_wmo_urgency_certainty_mapping PASSED
+services/api/tests/test_alert_quality_fixes.py::test_local_color_code_extraction PASSED
+services/api/tests/test_alert_quality_fixes.py::test_authentic_agency_name PASSED
+services/api/tests/test_alert_quality_fixes.py::test_farmer_mode_applicability_and_wording PASSED
+services/api/tests/test_api_endpoints.py::test_server_health_only_endpoint PASSED
+services/api/tests/test_farmer_engine.py::test_dry_spell_watch_generation PASSED
+services/api/tests/test_farmer_engine.py::test_hardware_gating_status_enforced PASSED
+services/api/tests/test_production_security_geo.py::test_parse_cap_polygon_coordinate_inversion_and_closure PASSED
+services/api/tests/test_production_security_geo.py::test_local_vs_country_wide_spatial_matching PASSED
+services/api/tests/test_production_security_geo.py::test_location_unverified_alert_suppressed_for_precision_notifications PASSED
+services/api/tests/test_production_security_geo.py::test_push_endpoint_ssrf_blocking PASSED
+services/api/tests/test_production_security_geo.py::test_endpoint_possession_and_anti_takeover PASSED
+services/api/tests/test_production_security_geo.py::test_worker_key_authorization_on_dispatch_sync PASSED
+services/api/tests/test_production_security_geo.py::test_transient_failure_retry_and_dead_endpoint_deactivation PASSED
+services/api/tests/test_production_security_geo.py::test_alerthub_zero_keyword_severity_inference PASSED
+services/api/tests/test_push_notifications.py::test_validate_push_endpoint_ssrf_defenses PASSED
+services/api/tests/test_push_notifications.py::test_severity_and_geographic_matching_logic PASSED
+services/api/tests/test_push_notifications.py::test_push_subscription_api_lifecycle PASSED
+services/api/tests/test_push_notifications.py::test_alert_query_and_detail_endpoints PASSED
+services/api/tests/test_risk_engine.py::test_heavy_rainfall_threshold PASSED
+services/api/tests/test_risk_engine.py::test_extreme_heat_threshold PASSED
+services/api/tests/test_risk_engine.py::test_strong_wind_threshold PASSED
+services/api/tests/test_risk_engine.py::test_benign_weather_no_unwarranted_risk PASSED
+services/api/tests/test_schemas.py::test_provenance_schema PASSED
+services/api/tests/test_schemas.py::test_location_search_result_formatting PASSED
+services/api/tests/test_schemas.py::test_current_weather_schema PASSED
+services/api/tests/test_stress_and_hardening.py::test_stress_concurrent_health_and_local_queries PASSED
+services/api/tests/test_stress_and_hardening.py::test_hardening_pathological_polygon_inputs PASSED
+services/api/tests/test_stress_and_hardening.py::test_hardening_pathological_circle_inputs PASSED
+services/api/tests/test_stress_and_hardening.py::test_hardening_ssrf_malicious_endpoints PASSED
+services/api/tests/test_stress_and_hardening.py::test_hardening_farmer_engine_extreme_weather PASSED
+services/api/tests/test_stress_and_hardening.py::test_hardening_risk_engine_extreme_temperatures PASSED
+services/api/tests/test_stress_and_hardening.py::test_hardening_strict_country_matching_fuzzy_rejections PASSED
+
+===================== 36 passed, 10 deselected in 6.72s =====================
+```
+
+#### Explicit Reason for 10 Deselected Tests:
+The 10 deselected tests are marked with `@pytest.mark.live` and query external upstream APIs (WMO SWIC, GDACS, Alert-Hub, Open-Meteo). They are deliberately excluded during offline CI runs to ensure offline determinism and avoid failures due to external network rate limits:
+1. `test_wmo_feed_live_connection` (queries `severeweather.wmo.int`)
+2. `test_gdacs_live_connection` (queries `www.gdacs.org`)
+3. `test_alerthub_live_connection` (queries `alert-hub.org`)
+4. `test_global_alert_aggregator_live` (queries multi-provider aggregator)
+5. `test_global_alert_caching` (queries live cache)
+6. `test_open_meteo_live_forecast` (queries Open-Meteo API)
+7. `test_geocoding_live_search` (queries Open-Meteo Geocoding)
+8. `test_full_pipeline_live_integration` (queries end-to-end live flow)
+9. `test_health_with_providers` (probes all 4 upstream providers for live status)
+10. `test_live_country_filtering_no_china_leak_for_in` (queries live WMO & GDACS feeds for India)
+
+- Next.js production build: **Passed (`pnpm --filter web build` compiled successfully)**
+- Playwright browser E2E test: **Passed (5 comprehensive test suites, 13 user journeys verified)**

@@ -227,12 +227,17 @@ async def process_and_dispatch_active_alerts(db: AsyncSession) -> Dict[str, int]
             }
 
             # Send push
-            success, code, err = send_web_push(
+            push_res = send_web_push(
                 endpoint=sub.endpoint,
                 p256dh=sub.p256dh,
                 auth=sub.auth,
                 payload=push_payload,
             )
+            success = push_res[0]
+            code = push_res[1]
+            err = push_res[2]
+            receipt = push_res[3] if len(push_res) > 3 else f"GATEWAY_HTTP_{code}"
+            gateway_status = push_res[4] if len(push_res) > 4 else ("GATEWAY_ACCEPTED" if success else "TRANSIENT_FAILURE")
 
             # Determine delivery status and retry backoff
             if success:
@@ -323,15 +328,53 @@ async def retry_transient_deliveries(db: AsyncSession) -> Dict[str, int]:
             "tag": f"alert-{alert.id}",
         }
 
-        success, code, err = send_web_push(
+        # Re-verify geographic and severity eligibility before retrying in case subscription preferences/location changed
+        categories = json.loads(sub.categories) if isinstance(sub.categories, str) else (sub.categories or [])
+        if alert.alert_type not in categories:
+            delivery.status = "FILTERED_OUT"
+            delivery.error_message = f"Alert type {alert.alert_type} not in subscription categories"
+            continue
+
+        if not is_severity_eligible(alert.severity, sub.min_severity):
+            delivery.status = "FILTERED_OUT"
+            delivery.error_message = f"Alert severity {alert.severity} below minimum {sub.min_severity}"
+            continue
+
+        geo_match = evaluate_alert_spatial_match(
+            sub_country=sub.country_code,
+            sub_lat=sub.latitude,
+            sub_lon=sub.longitude,
+            sub_radius_km=sub.radius_km,
+            wants_country_wide=bool(sub.wants_country_wide),
+            alert_country_code=alert.country_code,
+            alert_area_desc=alert.affected_area,
+            alert_headline=alert.headline,
+            alert_lat=alert.latitude,
+            alert_lon=alert.longitude,
+            alert_polygons_str=getattr(alert, "polygons_json", None) or getattr(alert, "polygons", None),
+            alert_circle_str=None,
+            alert_is_country_wide=getattr(alert, "is_country_wide", False),
+            alert_geographic_status=getattr(alert, "geographic_status", "LOCATION_VERIFIED"),
+        )
+        if not geo_match:
+            delivery.status = "FILTERED_OUT"
+            delivery.error_message = "Subscription location or preferences no longer match alert"
+            continue
+
+        push_res = send_web_push(
             endpoint=sub.endpoint,
             p256dh=sub.p256dh,
             auth=sub.auth,
             payload=push_payload,
         )
+        success = push_res[0]
+        code = push_res[1]
+        err = push_res[2]
+        receipt = push_res[3] if len(push_res) > 3 else f"RETRY_HTTP_{code}"
+        gateway_status = push_res[4] if len(push_res) > 4 else ("GATEWAY_ACCEPTED" if success else "TRANSIENT_FAILURE")
 
         delivery.http_status = code
-        delivery.gateway_receipt = f"RETRY_HTTP_{code}"
+        delivery.gateway_receipt = receipt
 
         if success:
             delivery.status = "GATEWAY_ACCEPTED"

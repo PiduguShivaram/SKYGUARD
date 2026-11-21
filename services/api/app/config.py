@@ -1,5 +1,5 @@
 """Application settings and environment configurations."""
-from typing import List
+from typing import List, Optional
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -40,7 +40,7 @@ class Settings(BaseSettings):
     VAPID_KEY_FILE: str = "vapid_private.pem"
 
     # Security & Background Worker Controls
-    INTERNAL_WORKER_KEY: str = "skyguard_internal_secret_worker_key_2026"
+    INTERNAL_WORKER_KEY: Optional[str] = None
     MAX_DELIVERY_RETRIES: int = 3
     RETRY_BACKOFF_BASE_SECONDS: int = 60
     ALLOWED_PUSH_GATEWAYS: List[str] = [

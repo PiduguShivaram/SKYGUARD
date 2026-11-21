@@ -44,9 +44,9 @@ class GlobalAlertItem(BaseModel):
     affected_area: str = Field(..., description="Official area description or territory name")
     latitude: Optional[float] = Field(None, description="Centroid or point latitude if officially supplied")
     longitude: Optional[float] = Field(None, description="Centroid or point longitude if officially supplied")
-    polygons: Optional[List[List[List[float]]]] = Field(
+    polygons: Optional[List[str]] = Field(
         None,
-        description="GeoJSON-compliant polygon rings [[[lon, lat], ...]] parsed from official CAP <polygon> or GDACS footprints",
+        description="List of CAP 1.2 space-delimited coordinate strings 'lat1,lon1 lat2,lon2 ...' representing official warning polygons",
     )
     geocodes: Optional[List[Dict[str, str]]] = Field(
         None,

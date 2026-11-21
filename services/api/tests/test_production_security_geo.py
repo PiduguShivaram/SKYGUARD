@@ -19,7 +19,7 @@ from unittest.mock import patch
 
 import pytest
 from httpx import ASGITransport, AsyncClient
-from sqlalchemy import select
+from sqlalchemy import delete, select
 
 from services.api.app.adapters.alert_hub import determine_alerthub_severity
 from services.api.app.config import settings
@@ -242,28 +242,33 @@ async def test_endpoint_possession_and_anti_takeover():
 @pytest.mark.asyncio
 async def test_worker_key_authorization_on_dispatch_sync():
     """Verify that /api/v1/push/dispatch-sync requires X-Worker-Key matching INTERNAL_WORKER_KEY."""
-    transport = ASGITransport(app=app)
-    async with AsyncClient(transport=transport, base_url="http://test") as client:
-        # 1. Missing header -> 403 Forbidden
-        res_no_key = await client.post("/api/v1/push/dispatch-sync")
-        assert res_no_key.status_code == 403
+    original_key = settings.INTERNAL_WORKER_KEY
+    settings.INTERNAL_WORKER_KEY = "test_secret_worker_key_123"
+    try:
+        transport = ASGITransport(app=app)
+        async with AsyncClient(transport=transport, base_url="http://test") as client:
+            # 1. Missing header -> 403 Forbidden
+            res_no_key = await client.post("/api/v1/push/dispatch-sync")
+            assert res_no_key.status_code == 403
 
-        # 2. Invalid header -> 403 Forbidden
-        res_bad_key = await client.post(
-            "/api/v1/push/dispatch-sync",
-            headers={"X-Worker-Key": "invalid_unauthorized_key"},
-        )
-        assert res_bad_key.status_code == 403
-
-        # 3. Valid worker key -> 200 OK
-        with patch("services.api.app.routers.push.process_and_dispatch_active_alerts") as mock_dispatch:
-            mock_dispatch.return_value = {"active_alerts_scanned": 0, "notifications_dispatched": 0}
-            res_valid = await client.post(
+            # 2. Invalid header -> 403 Forbidden
+            res_bad_key = await client.post(
                 "/api/v1/push/dispatch-sync",
-                headers={"X-Worker-Key": settings.INTERNAL_WORKER_KEY},
+                headers={"X-Worker-Key": "invalid_unauthorized_key"},
             )
-            assert res_valid.status_code == 200
-            assert res_valid.json()["status"] == "COMPLETED"
+            assert res_bad_key.status_code == 403
+
+            # 3. Valid worker key -> 200 OK
+            with patch("services.api.app.routers.push.process_and_dispatch_active_alerts") as mock_dispatch:
+                mock_dispatch.return_value = {"active_alerts_scanned": 0, "notifications_dispatched": 0}
+                res_valid = await client.post(
+                    "/api/v1/push/dispatch-sync",
+                    headers={"X-Worker-Key": "test_secret_worker_key_123"},
+                )
+                assert res_valid.status_code == 200
+                assert res_valid.json()["status"] == "COMPLETED"
+    finally:
+        settings.INTERNAL_WORKER_KEY = original_key
 
 
 # ---------------------------------------------------------------------------
@@ -293,6 +298,10 @@ async def test_transient_failure_retry_and_dead_endpoint_deactivation():
 
         from services.api.app.db.base import AsyncSessionLocal
         async with AsyncSessionLocal() as db:
+            # Purge any lingering transient deliveries from previous interrupted runs
+            await db.execute(delete(NotificationDelivery).where(NotificationDelivery.status == "TRANSIENT_FAILURE"))
+            await db.commit()
+
             alert_id = f"alert-retry-{unique_id}"
             # Create a mock alert in DB
             alert = AlertRecord(
@@ -329,7 +338,7 @@ async def test_transient_failure_retry_and_dead_endpoint_deactivation():
 
             # 1. Test successful retry
             with patch("services.api.app.services.alert_matcher.send_web_push") as mock_push:
-                mock_push.return_value = (True, 201, None)
+                mock_push.return_value = (True, 201, None, "RETRY_GATEWAY_RECEIPT_123", "GATEWAY_ACCEPTED")
                 stats = await retry_transient_deliveries(db)
                 assert stats["retry_succeeded"] == 1
 
@@ -343,7 +352,7 @@ async def test_transient_failure_retry_and_dead_endpoint_deactivation():
             await db.commit()
 
             with patch("services.api.app.services.alert_matcher.send_web_push") as mock_push:
-                mock_push.return_value = (False, 410, "Subscription expired or unregistered")
+                mock_push.return_value = (False, 410, "Subscription expired or unregistered", None, "PERMANENT_FAILURE")
                 stats = await retry_transient_deliveries(db)
                 assert stats["deactivated"] == 1
 
@@ -353,6 +362,12 @@ async def test_transient_failure_retry_and_dead_endpoint_deactivation():
                 sub = sub_res.scalars().first()
                 assert sub.is_active is False
                 assert delivery.status == "PERMANENT_FAILURE"
+
+                # Clean up test alert, delivery, and subscription from DB
+                await db.delete(delivery)
+                await db.delete(alert)
+                await db.delete(sub)
+                await db.commit()
 
 
 # ---------------------------------------------------------------------------

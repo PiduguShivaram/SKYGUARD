@@ -103,36 +103,14 @@ async def register_subscription(
 
     categories_json = json.dumps(req.categories or ["OFFICIAL_CAP_WARNING", "GDACS_DISASTER_ALERT"])
 
-    if existing and existing.is_active:
-        # Prevent endpoint takeover: require matching existing possession token
+    if existing:
+        # Prevent endpoint takeover: require matching existing possession token for both active and inactive endpoints
         if not req.existing_token or hash_token(req.existing_token) != existing.possession_token_hash:
             raise PermissionError(
-                "Push endpoint is already registered and active. Valid possession token required to modify."
+                "Push endpoint is already registered. Valid possession token required to modify or reactivate."
             )
 
-        # Authorized update
-        existing.p256dh = req.keys.p256dh
-        existing.auth = req.keys.auth
-        existing.country_code = req.country_code
-        existing.latitude = req.latitude
-        existing.longitude = req.longitude
-        existing.radius_km = req.radius_km or 500.0
-        existing.wants_country_wide = req.wants_country_wide
-        existing.categories = categories_json
-        existing.min_severity = req.min_severity or "Moderate"
-        existing.last_seen_at = datetime.now(timezone.utc)
-        existing.updated_at = datetime.now(timezone.utc)
-        await db.commit()
-        await db.refresh(existing)
-        return existing, req.existing_token
-
-    # Generate a new cryptographically secure possession token
-    raw_token = f"sub_tok_{secrets.token_urlsafe(32)}"
-    token_hash = hash_token(raw_token)
-
-    if existing and not existing.is_active:
-        # Re-activating an expired/inactive subscription
-        existing.possession_token_hash = token_hash
+        # Authorized update / reactivation
         existing.p256dh = req.keys.p256dh
         existing.auth = req.keys.auth
         existing.country_code = req.country_code
@@ -147,7 +125,11 @@ async def register_subscription(
         existing.updated_at = datetime.now(timezone.utc)
         await db.commit()
         await db.refresh(existing)
-        return existing, raw_token
+        return existing, req.existing_token
+
+    # Generate a new cryptographically secure possession token for new endpoint
+    raw_token = f"sub_tok_{secrets.token_urlsafe(32)}"
+    token_hash = hash_token(raw_token)
 
     # Create new subscription
     new_sub = PushSubscription(

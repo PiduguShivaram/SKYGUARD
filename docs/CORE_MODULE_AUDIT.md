@@ -221,7 +221,7 @@ All test suites were executed on the local environment without mock fixtures lea
 | **DEF-06** | `services/api/app/api/v1/push.py:175` | Unauthenticated invocation of background sync endpoint `/dispatch-sync`. | Added `X-Worker-Key` header authentication requirement (`HTTP 403 Forbidden` if missing/invalid). | **MEDIUM** | `test_worker_key_authorization_on_dispatch_sync` PASSED |
 | **DEF-07** | `apps/web/src/components/CurrentWeatherCard.tsx:78` | NWP model estimates presented without source disclosure. | Labeled as *"NWP Model-Estimated Current Conditions; not an in-situ physical station observation."* | **MEDIUM** | Playwright E2E browser test verified |
 | **DEF-08** | `apps/web/src/components/FarmerModePanel.tsx:173` | Misleading "No Critical Field Watches" implied guaranteed safety. | Replaced with *"No Forecast-Threshold Triggers Detected"* with explicit agroclimatic limitation notice. | **MEDIUM** | Playwright E2E browser test verified |
-| **DEF-09** | `services/api/app/services/push_service.py:240` | Ambiguity between push gateway receipt and client device display. | Mapped HTTP 201 strictly to `GATEWAY_ACCEPTED`; logged receipt header for delivery auditability. | **LOW** | `test_push_notifications.py` PASSED |
+| **DEF-09** | `services/api/app/services/push_service.py:240` | Ambiguity between push gateway receipt and client device display. | Mapped HTTP 201 strictly to `GATEWAY_ACCEPTED`; records status-derived receipts (`HTTP_<status>` for dispatch, `RETRY_HTTP_<status>` for retry) while only the diagnostic path stores the raw header-derived receipt. | **LOW** | `test_push_notifications.py` PASSED |
 
 ---
 

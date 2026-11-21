@@ -1,4 +1,4 @@
-# SkyGuard 🛡️ — Weather Alerts & Climate Intelligence Platform
+# SkyGuard — Weather Alerts & Climate Intelligence Platform
 
 > **Predict Weather. Understand Risk. Stay Prepared.**  
 > A unified, real-time public weather intelligence, worldwide disaster alert, and verified emergency warning platform with a strictly-gated Farmer Mode.
@@ -14,7 +14,7 @@
 
 ---
 
-## 📌 Executive Summary
+## Executive Summary
 
 ### Problem Statement
 The lack of a unified, reliable, location-specific weather and disaster intelligence platform makes it difficult for individuals, communities, and agricultural producers to anticipate impending environmental hazards and take timely preventive actions. Existing consumer apps frequently mix synthetic simulated forecasts with real warnings, invent arbitrary risk scores, or obscure authoritative meteorological sources.
@@ -24,7 +24,7 @@ The lack of a unified, reliable, location-specific weather and disaster intellig
 
 ---
 
-## 📜 Absolute Data Integrity Invariants
+## Absolute Data Integrity Invariants
 
 SkyGuard operates under a non-negotiable architectural contract governed by [`AGENTS.md`](AGENTS.md):
 
@@ -41,7 +41,7 @@ SkyGuard operates under a non-negotiable architectural contract governed by [`AG
 
 ---
 
-## 🏛️ System Architecture
+## System Architecture
 
 SkyGuard separates client rendering from server-side ingestion and cryptographic push operations. All external meteorological and disaster endpoints are proxied asynchronously through FastAPI with strict timeouts, retries, and data normalization.
 
@@ -91,7 +91,7 @@ flowchart TD
 
 ---
 
-## 🔄 End-to-End Push Verification & Geospatial Workflow
+## End-to-End Push Verification & Geospatial Workflow
 
 SkyGuard implements high-security, possession-token-protected Web Push notifications with strict polygon geofencing. Local alerts never trigger notifications in other cities within the same country unless the user explicitly opts into country-wide bulletins.
 
@@ -128,7 +128,7 @@ sequenceDiagram
 
 ---
 
-## 🌾 Agrometeorological Heuristics & Hardware Gating Workflow
+## Agrometeorological Heuristics & Hardware Gating Workflow
 
 In Farmer Mode, operational crop watches are computed purely from authentic 7-day Numerical Weather Prediction forecasts. Future and unconnected features remain strictly gated to protect farmers from fabricated telemetry.
 
@@ -176,7 +176,7 @@ flowchart LR
 
 ---
 
-## 🧩 Five Core Modules
+## Five Core Modules
 
 | Module | Purpose | Data Source / Standard | Security & Integrity Hardening |
 |---|---|---|---|
@@ -188,7 +188,7 @@ flowchart LR
 
 ---
 
-## 🧪 Comprehensive Testing & Verification Matrix
+## Comprehensive Testing & Verification Matrix
 
 SkyGuard includes a multi-layered automated verification pipeline spanning unit tests, integration suites, concurrency stress tests, dependency vulnerability audits, and multi-viewport browser journeys.
 
@@ -223,7 +223,7 @@ The repository runs 5 automated CI jobs on every pull request and push:
 
 ---
 
-## 🚀 Quickstart Guide
+## Quickstart Guide
 
 ### Prerequisites
 - **Node.js** v18+ & **pnpm** (or npm)
@@ -263,7 +263,7 @@ pnpm dev
 
 ---
 
-## 🛠️ Verification Commands
+## Verification Commands
 
 Run the following verification commands to inspect system health locally:
 
@@ -289,7 +289,7 @@ python -u tests/test_browser_e2e.py
 
 ---
 
-## 📋 API Specification Summary
+## API Specification Summary
 
 | Endpoint | Method | Scope | Source / Security |
 |---|---|---|---|
@@ -309,14 +309,14 @@ python -u tests/test_browser_e2e.py
 
 ---
 
-## 📄 Audit Documentation & Evidence
+## Audit Documentation & Evidence
 
 For line-by-line verification evidence, scoring rubrics, security audit findings, and mathematical calculations across all five core modules, consult the official audit report:
-👉 **[docs/CORE_MODULE_AUDIT.md](docs/CORE_MODULE_AUDIT.md)**
+[docs/CORE_MODULE_AUDIT.md](docs/CORE_MODULE_AUDIT.md)
 
 ---
 
-## ⚖️ License & Ethical Commitment
+## License & Ethical Commitment
 
 SkyGuard is released under the **[MIT License](LICENSE)**.
 

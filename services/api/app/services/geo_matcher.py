@@ -18,14 +18,15 @@ from services.api.app.adapters.source_registry import strictly_matches_country
 COUNTRY_WIDE_KEYWORDS = [
     "nationwide",
     "countrywide",
-    "national",
     "all districts",
     "all states",
     "all provinces",
     "all territories",
     "entire country",
     "national bulletin",
+    "national warning",
     "across the country",
+    "whole country",
 ]
 
 
@@ -48,16 +49,19 @@ def parse_cap_polygon(poly_str: str) -> Optional[Polygon]:
     coords: List[Tuple[float, float]] = []
     for tok in tokens:
         if "," not in tok:
-            continue
+            return None
         parts = tok.split(",")
+        if len(parts) != 2:
+            return None
         try:
             lat = float(parts[0].strip())
             lon = float(parts[1].strip())
-            # Boundary checks
-            if -90.0 <= lat <= 90.0 and -180.0 <= lon <= 180.0:
-                coords.append((lon, lat))  # (x, y) = (lon, lat)
+            # Strict boundary checks: reject entire polygon if any vertex is out of physical bounds
+            if not (-90.0 <= lat <= 90.0 and -180.0 <= lon <= 180.0):
+                return None
+            coords.append((lon, lat))  # (x, y) = (lon, lat)
         except (ValueError, IndexError):
-            continue
+            return None
 
     if len(coords) < 3:
         return None
@@ -69,18 +73,31 @@ def parse_cap_polygon(poly_str: str) -> Optional[Polygon]:
     if len(coords) < 4:
         return None
 
+    # Handle antimeridian crossing rings: if coordinates span across the 180/-180 meridian
+    longitudes = [c[0] for c in coords]
+    if (max(longitudes) - min(longitudes) > 180) and any(lon > 90 for lon in longitudes) and any(lon < -90 for lon in longitudes):
+        # Unwrap negative longitudes by +360 for consistent planar topology
+        coords = [((lon + 360 if lon < 0 else lon), lat) for lon, lat in coords]
+
     try:
         poly = Polygon(coords)
         if not poly.is_valid:
             poly = make_valid(poly)
-            # If make_valid returned a GeometryCollection or MultiPolygon, find first Polygon
-            if isinstance(poly, MultiPolygon):
-                return poly
-            if hasattr(poly, "geoms"):
-                for g in poly.geoms:
-                    if isinstance(g, (Polygon, MultiPolygon)):
-                        return g
-        return poly
+
+        if poly.is_empty or getattr(poly, "area", 0) <= 0:
+            return None
+
+        if isinstance(poly, (Polygon, MultiPolygon)):
+            return poly
+
+        if hasattr(poly, "geoms"):
+            valid_polys = [g for g in poly.geoms if isinstance(g, Polygon) and not g.is_empty and g.area > 0]
+            if len(valid_polys) == 1:
+                return valid_polys[0]
+            elif len(valid_polys) > 1:
+                return MultiPolygon(valid_polys)
+
+        return None
     except Exception:
         return None
 
@@ -127,11 +144,11 @@ def is_point_in_alert_polygon(
     lat: float,
     lon: float,
     polygon_or_multipolygon: Any,
-    epsilon_deg: float = 0.005,
 ) -> bool:
     """Verify if (lat, lon) is strictly within or on the boundary of the alert polygon.
     
-    Uses Shapely contains/touches with a tiny epsilon buffer for precision edge cases.
+    Uses Shapely contains and touches. For antimeridian-unwrapped polygons (bounds > 180),
+    evaluates unwrapped point coordinates consistently.
     """
     if polygon_or_multipolygon is None:
         return False
@@ -141,9 +158,13 @@ def is_point_in_alert_polygon(
     try:
         if polygon_or_multipolygon.contains(pt) or polygon_or_multipolygon.touches(pt):
             return True
-        # Check boundary with buffer
-        if polygon_or_multipolygon.distance(pt) <= epsilon_deg:
-            return True
+
+        # If polygon was unwrapped across antimeridian (+360), test corresponding transformed point
+        bounds = getattr(polygon_or_multipolygon, "bounds", None)
+        if bounds and bounds[2] > 180:
+            pt_unwrapped = Point(lon + 360 if lon < 0 else lon, lat)
+            if polygon_or_multipolygon.contains(pt_unwrapped) or polygon_or_multipolygon.touches(pt_unwrapped):
+                return True
     except Exception:
         pass
 

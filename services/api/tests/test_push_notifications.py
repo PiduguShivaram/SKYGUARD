@@ -1,4 +1,5 @@
 """Tests for Web Push subscription management, VAPID security, SSRF defenses, and alert matching."""
+import uuid
 import pytest
 from httpx import ASGITransport, AsyncClient
 
@@ -94,8 +95,9 @@ async def test_push_subscription_api_lifecycle():
         assert "Invalid push subscription endpoint" in bad_resp.json()["detail"]
 
         # 3. Register valid subscription
+        unique_token = uuid.uuid4().hex[:8]
         valid_payload = {
-            "endpoint": "https://fcm.googleapis.com/fcm/send/pytest_device_token_lifecycle",
+            "endpoint": f"https://fcm.googleapis.com/fcm/send/pytest_device_{unique_token}",
             "keys": {"p256dh": "test_p256dh_key", "auth": "test_auth_secret"},
             "country_code": "IN",
             "latitude": 17.9784,

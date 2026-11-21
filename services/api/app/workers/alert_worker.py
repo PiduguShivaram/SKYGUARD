@@ -39,6 +39,7 @@ async def run_worker_cycle() -> None:
             logger.info(f"Dispatch pass complete: {dispatch_stats}")
         except Exception as exc:
             logger.error(f"Error during alert dispatch pass: {exc}", exc_info=True)
+            await db.rollback()
 
         try:
             logger.info("Executing transient delivery retry pass...")

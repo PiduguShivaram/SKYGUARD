@@ -154,27 +154,41 @@ jobs:
 
       - name: Start FastAPI backend daemon
         run: |
-          PYTHONPATH=. uvicorn services.api.app.main:app --host 127.0.0.1 --port 8000 &
+          PYTHONPATH=. uvicorn services.api.app.main:app --host 127.0.0.1 --port 8000 > backend.log 2>&1 &
+          READY=0
           for i in {1..30}; do
             if curl -s http://127.0.0.1:8000/health > /dev/null; then
               echo "FastAPI backend is ready!"
+              READY=1
               break
             fi
-            echo "Waiting for FastAPI backend to respond..."
+            echo "Waiting for FastAPI backend to respond ($i/30)..."
             sleep 1
           done
+          if [ $READY -eq 0 ]; then
+            echo "FastAPI backend failed to become ready within 30 seconds. Server logs:"
+            cat backend.log
+            exit 1
+          fi
 
       - name: Start Next.js frontend daemon
         run: |
-          pnpm --filter web start -p 3000 &
+          pnpm --filter web start -p 3000 > frontend.log 2>&1 &
+          READY=0
           for i in {1..30}; do
             if curl -s http://127.0.0.1:3000 > /dev/null; then
               echo "Next.js frontend is ready!"
+              READY=1
               break
             fi
-            echo "Waiting for Next.js frontend to respond..."
+            echo "Waiting for Next.js frontend to respond ($i/30)..."
             sleep 1
           done
+          if [ $READY -eq 0 ]; then
+            echo "Next.js frontend failed to become ready within 30 seconds. Server logs:"
+            cat frontend.log
+            exit 1
+          fi
 
       - name: Run 5 Playwright E2E Test Suites
         run: |

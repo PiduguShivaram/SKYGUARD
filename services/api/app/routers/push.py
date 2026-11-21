@@ -72,6 +72,11 @@ async def require_internal_worker_key(
     x_worker_key: Optional[str] = Header(None, alias="X-Worker-Key"),
 ) -> str:
     """Enforce internal authorization for worker sync dispatches."""
+    if not settings.INTERNAL_WORKER_KEY:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Worker dispatch is disabled: INTERNAL_WORKER_KEY secret is not configured in environment.",
+        )
     if not x_worker_key or x_worker_key != settings.INTERNAL_WORKER_KEY:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,

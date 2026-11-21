@@ -48,9 +48,9 @@ def map_gdacs_severity(alert_level: Optional[str]) -> AlertSeverityLevel:
 
 
 class GDACSAdapter:
-    def __init__(self, timeout: float = 20.0):
+    def __init__(self, timeout: float = 10.0):
         self.url = GDACS_GEOJSON_URL
-        self.timeout = httpx.Timeout(timeout, connect=8.0)
+        self.timeout = httpx.Timeout(timeout, connect=min(timeout, 8.0), read=timeout, write=timeout, pool=timeout)
 
     async def fetch_alerts(
         self,
