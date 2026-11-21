@@ -268,9 +268,9 @@ async def process_and_dispatch_active_alerts(db: AsyncSession) -> Dict[str, int]
                 next_retry_at=next_retry,
             )
             db.add(delivery)
+            await db.commit()
             stats["notifications_dispatched"] += 1
 
-    await db.commit()
     return stats
 
 
@@ -340,7 +340,22 @@ async def retry_transient_deliveries(db: AsyncSession) -> Dict[str, int]:
             delivery.error_message = f"Alert severity {alert.severity} below minimum {sub.min_severity}"
             continue
 
-        geo_match = evaluate_alert_spatial_match(
+        # Decode alert.polygons_json before assigning alert_polygons_str
+        polygons_list = None
+        raw_polygons = getattr(alert, "polygons_json", None)
+        if raw_polygons:
+            if isinstance(raw_polygons, list):
+                polygons_list = raw_polygons
+            elif isinstance(raw_polygons, str):
+                try:
+                    loaded = json.loads(raw_polygons)
+                    polygons_list = loaded if isinstance(loaded, list) else None
+                except Exception:
+                    polygons_list = None
+        elif hasattr(alert, "polygons") and getattr(alert, "polygons", None):
+            polygons_list = getattr(alert, "polygons")
+
+        geo_match, match_reason, dist = evaluate_alert_spatial_match(
             sub_country=sub.country_code,
             sub_lat=sub.latitude,
             sub_lon=sub.longitude,
@@ -351,14 +366,15 @@ async def retry_transient_deliveries(db: AsyncSession) -> Dict[str, int]:
             alert_headline=alert.headline,
             alert_lat=alert.latitude,
             alert_lon=alert.longitude,
-            alert_polygons_str=getattr(alert, "polygons_json", None) or getattr(alert, "polygons", None),
+            alert_polygons_str=polygons_list,
             alert_circle_str=None,
             alert_is_country_wide=getattr(alert, "is_country_wide", False),
             alert_geographic_status=getattr(alert, "geographic_status", "LOCATION_VERIFIED"),
         )
         if not geo_match:
             delivery.status = "FILTERED_OUT"
-            delivery.error_message = "Subscription location or preferences no longer match alert"
+            delivery.error_message = f"Subscription location or preferences no longer match alert: {match_reason}"
+            await db.commit()
             continue
 
         push_res = send_web_push(
@@ -395,5 +411,6 @@ async def retry_transient_deliveries(db: AsyncSession) -> Dict[str, int]:
                 delivery.next_retry_at = datetime.now(timezone.utc) + timedelta(seconds=backoff_sec)
             stats["retry_failed"] += 1
 
-    await db.commit()
+        await db.commit()
+
     return stats

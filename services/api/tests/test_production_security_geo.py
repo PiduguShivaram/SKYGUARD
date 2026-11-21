@@ -291,6 +291,7 @@ async def test_transient_failure_retry_and_dead_endpoint_deactivation():
                 "endpoint": endpoint,
                 "keys": {"p256dh": "p256dh_retry_test", "auth": "auth_retry_test"},
                 "country_code": "IN",
+                "wants_country_wide": True,
             },
         )
         assert res.status_code == 201
@@ -319,6 +320,7 @@ async def test_transient_failure_retry_and_dead_endpoint_deactivation():
                 description="Heavy rain expected in test area",
                 source_url="https://severeweather.wmo.int/v2/cap-alerts/test",
                 is_active=True,
+                is_country_wide=True,
                 retrieved_at=datetime.now(timezone.utc),
             )
             db.add(alert)
