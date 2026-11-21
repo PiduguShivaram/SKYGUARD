@@ -5,21 +5,14 @@ import {
   Bell,
   BellOff,
   ShieldCheck,
-  AlertTriangle,
   X,
-  CheckCircle2,
   Send,
   Sliders,
-  MapPin,
   Info,
-  Radio,
-  RefreshCw,
-  Compass,
 } from "lucide-react";
 import {
   AlertCategory,
   AlertSeverity,
-  PushPreferencesResponse,
   PushPermissionStatus,
 } from "@/types";
 import {
@@ -80,6 +73,15 @@ export const NotificationSettingsModal: React.FC<NotificationSettingsModalProps>
   const [testStatus, setTestStatus] = useState<string | null>(null);
   const [feedback, setFeedback] = useState<string | null>(null);
 
+  // Escape key support
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [onClose]);
+
   // Load subscription state from localStorage on mount
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -102,7 +104,6 @@ export const NotificationSettingsModal: React.FC<NotificationSettingsModalProps>
       setIsSubscribed(true);
       setLoadingPreferences(true);
 
-      // Fetch fresh preferences from backend
       getPushPreferences(savedToken)
         .then((prefs) => {
           if (!isActive) return;
@@ -117,12 +118,10 @@ export const NotificationSettingsModal: React.FC<NotificationSettingsModalProps>
           if (!isActive) return;
           const msg = (err?.message || "").toLowerCase();
           if (msg.includes("401") || msg.includes("403") || msg.includes("token") || msg.includes("unauthorized")) {
-            // Definitively invalid or expired token
             localStorage.removeItem("skyguard_push_sub_id");
             localStorage.removeItem("skyguard_push_token");
             setIsSubscribed(false);
           } else {
-            // Network or 503 error: retain credentials and allow retry
             console.warn("Transient error loading push preferences, retaining credentials:", err);
           }
         })
@@ -138,7 +137,6 @@ export const NotificationSettingsModal: React.FC<NotificationSettingsModalProps>
 
   if (!isOpen) return null;
 
-  // Handle explicit permission and subscription
   const handleEnableNotifications = async () => {
     setLoading(true);
     setFeedback(null);
@@ -149,7 +147,6 @@ export const NotificationSettingsModal: React.FC<NotificationSettingsModalProps>
         throw new Error("Push notifications are not supported by this browser.");
       }
 
-      // Request browser permission explicitly upon user click
       const permResult = await Notification.requestPermission();
       setPermission(permResult as PushPermissionStatus);
 
@@ -157,15 +154,12 @@ export const NotificationSettingsModal: React.FC<NotificationSettingsModalProps>
         throw new Error("Notification permission was denied or dismissed.");
       }
 
-      // Register Service Worker
       const registration = await navigator.serviceWorker.register("/sw.js");
       await navigator.serviceWorker.ready;
 
-      // Get VAPID public key from backend
       const vapidPublicKey = await getVapidPublicKey();
       const convertedVapidKey = urlBase64ToUint8Array(vapidPublicKey);
 
-      // Subscribe with browser PushManager
       const pushSubscription = await registration.pushManager.subscribe({
         userVisibleOnly: true,
         applicationServerKey: convertedVapidKey,
@@ -178,7 +172,6 @@ export const NotificationSettingsModal: React.FC<NotificationSettingsModalProps>
 
       const savedToken = localStorage.getItem("skyguard_push_token") || undefined;
 
-      // Register with SkyGuard backend
       const res = await subscribePush({
         endpoint: subJson.endpoint,
         keys: {
@@ -195,7 +188,6 @@ export const NotificationSettingsModal: React.FC<NotificationSettingsModalProps>
         min_severity: minSeverity,
       });
 
-      // Persist possession credentials securely in client localStorage
       localStorage.setItem("skyguard_push_sub_id", res.subscription_id);
       localStorage.setItem("skyguard_push_token", res.possession_token);
       setSubscriptionId(res.subscription_id);
@@ -211,7 +203,6 @@ export const NotificationSettingsModal: React.FC<NotificationSettingsModalProps>
     }
   };
 
-  // Handle Unsubscribe
   const handleUnsubscribe = async () => {
     setLoading(true);
     setFeedback(null);
@@ -221,7 +212,6 @@ export const NotificationSettingsModal: React.FC<NotificationSettingsModalProps>
         await unsubscribePush(subscriptionId, possessionToken);
       }
 
-      // Unsubscribe locally in browser
       if ("serviceWorker" in navigator) {
         const registration = await navigator.serviceWorker.ready;
         const sub = await registration.pushManager.getSubscription();
@@ -244,7 +234,6 @@ export const NotificationSettingsModal: React.FC<NotificationSettingsModalProps>
     }
   };
 
-  // Handle Update Preferences
   const handleSavePreferences = async () => {
     if (!possessionToken) return;
     setLoading(true);
@@ -266,7 +255,6 @@ export const NotificationSettingsModal: React.FC<NotificationSettingsModalProps>
     }
   };
 
-  // Dispatch Diagnostic Test Notification
   const handleSendDiagnosticTest = async () => {
     if (!possessionToken) return;
     setLoading(true);
@@ -293,50 +281,56 @@ export const NotificationSettingsModal: React.FC<NotificationSettingsModalProps>
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md animate-fadeIn">
-      <div className="bg-[#11141b] border border-[#202532] rounded-2xl max-w-lg w-full p-6 sm:p-7 shadow-2xl space-y-5 max-h-[90vh] overflow-y-auto font-mono">
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="push-modal-title"
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm animate-in fade-in duration-150"
+    >
+      <div className="surface-panel max-w-lg w-full p-6 shadow-dialog space-y-4 max-h-[90vh] overflow-y-auto">
         {/* Header */}
-        <div className="flex items-center justify-between pb-4 border-b border-[#1c212d]">
-          <div className="flex items-center gap-3">
-            <div className="p-2.5 bg-[#171b24] text-amber-400 rounded-xl border border-[#262c3b] shadow-inner">
+        <div className="flex items-center justify-between pb-3.5 border-b border-[#262c36]">
+          <div className="flex items-center gap-2.5">
+            <div className="p-2 bg-blue-600/15 text-blue-400 rounded-lg">
               <Bell className="w-5 h-5" />
             </div>
             <div>
-              <h3 className="text-base font-bold text-white tracking-tight font-sans">
+              <h3 id="push-modal-title" className="text-base font-semibold text-white tracking-tight">
                 Global Push Notification Center
               </h3>
-              <p className="text-xs text-zinc-400 font-mono">
+              <p className="text-xs text-zinc-400">
                 Privacy-preserving alerts for official WMO CAP &amp; GDACS disasters
               </p>
             </div>
           </div>
           <button
             onClick={onClose}
-            className="p-2 text-zinc-400 hover:text-white rounded-lg hover:bg-white/[0.06] transition-colors"
+            className="p-1.5 text-zinc-400 hover:text-white rounded-md hover:bg-[#1f242c] transition-colors"
+            aria-label="Close dialog"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
 
         {/* Permission & Status Bar */}
-        <div className="p-4 rounded-xl bg-[#0c0e13] border border-[#1e2330] flex items-center justify-between shadow-inner">
+        <div className="p-3.5 rounded-lg bg-[#11141a] border border-[#212630] flex items-center justify-between">
           <div>
-            <span className="text-[10px] uppercase font-bold text-zinc-500 tracking-wider font-mono">
+            <span className="text-[10px] uppercase font-medium text-zinc-400 tracking-wider">
               Browser Permission
             </span>
             <div className="flex items-center gap-2 mt-0.5">
               <span
                 className={`w-2 h-2 rounded-full ${
                   permission === "granted"
-                    ? "bg-emerald-400 shadow-[0_0_6px_#10B981]"
+                    ? "bg-emerald-400"
                     : permission === "denied"
                     ? "bg-rose-400"
                     : "bg-amber-400"
                 }`}
               />
-              <span className="text-xs font-bold text-white capitalize">{permission}</span>
+              <span className="text-xs font-semibold text-white capitalize">{permission}</span>
               {isSubscribed && (
-                <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 ml-1">
+                <span className="text-[10px] font-mono font-medium px-2 py-0.5 rounded bg-emerald-500/15 text-emerald-300 border border-emerald-500/25 ml-1">
                   DEVICE ACTIVE
                 </span>
               )}
@@ -347,7 +341,7 @@ export const NotificationSettingsModal: React.FC<NotificationSettingsModalProps>
             <button
               onClick={handleEnableNotifications}
               disabled={loading || permission === "denied"}
-              className="flex items-center gap-1.5 px-3.5 py-2 bg-amber-600 hover:bg-amber-500 disabled:opacity-50 text-black rounded-lg text-xs font-bold shadow-md transition-all active:scale-95 font-sans"
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white rounded-md text-xs font-medium transition-colors"
             >
               <Bell className="w-3.5 h-3.5" />
               <span>Enable Notifications</span>
@@ -356,7 +350,7 @@ export const NotificationSettingsModal: React.FC<NotificationSettingsModalProps>
             <button
               onClick={handleUnsubscribe}
               disabled={loading}
-              className="flex items-center gap-1.5 px-3.5 py-2 bg-rose-500/15 hover:bg-rose-500/25 text-rose-300 border border-rose-500/30 rounded-lg text-xs font-semibold transition-all active:scale-95 font-sans"
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-rose-500/15 hover:bg-rose-500/25 text-rose-300 border border-rose-500/30 rounded-md text-xs font-medium transition-colors"
             >
               <BellOff className="w-3.5 h-3.5" />
               <span>Disable</span>
@@ -367,10 +361,10 @@ export const NotificationSettingsModal: React.FC<NotificationSettingsModalProps>
         {/* Feedback message */}
         {feedback && (
           <div
-            className={`p-3 rounded-lg text-xs flex items-center gap-2 font-mono ${
+            className={`p-3 rounded-md text-xs flex items-center gap-2 ${
               feedback.startsWith("Error")
-                ? "bg-rose-950/30 text-rose-300 border border-rose-500/30"
-                : "bg-emerald-950/30 text-emerald-300 border border-emerald-500/30"
+                ? "bg-rose-950/20 text-rose-300 border border-rose-500/30"
+                : "bg-emerald-950/20 text-emerald-300 border border-emerald-500/30"
             }`}
           >
             <Info className="w-4 h-4 shrink-0" />
@@ -378,17 +372,17 @@ export const NotificationSettingsModal: React.FC<NotificationSettingsModalProps>
           </div>
         )}
 
-        {/* Notification Preferences (Configurable when subscribed) */}
-        <div className="space-y-4 pt-1">
-          <div className="flex items-center gap-1.5 text-xs font-bold text-zinc-300 uppercase tracking-wider font-sans">
-            <Sliders className="w-4 h-4 text-amber-400" />
+        {/* Preferences */}
+        <div className="space-y-3.5 pt-1">
+          <div className="flex items-center gap-1.5 text-xs font-semibold text-zinc-300 uppercase tracking-wider">
+            <Sliders className="w-4 h-4 text-blue-400" />
             <span>Notification Filters &amp; Coverage</span>
           </div>
 
           {/* Country Code & Radius */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
-              <label className="block text-[11px] font-semibold text-zinc-400 mb-1">
+              <label className="block text-[11px] font-medium text-zinc-400 mb-1">
                 Country Code (ISO 2-letter)
               </label>
               <input
@@ -397,18 +391,18 @@ export const NotificationSettingsModal: React.FC<NotificationSettingsModalProps>
                 value={countryCode}
                 onChange={(e) => setCountryCode(e.target.value.toUpperCase())}
                 placeholder="e.g. IN, US, DE"
-                className="w-full px-3 py-2 bg-[#0c0e13] border border-[#202532] rounded-lg text-xs text-white uppercase font-mono focus:outline-none focus:ring-1 focus:ring-amber-500/60"
+                className="w-full px-3 py-1.5 bg-[#11141a] border border-[#212630] rounded-md text-xs text-white uppercase font-mono focus:outline-none focus:ring-1 focus:ring-blue-500"
               />
             </div>
 
             <div>
-              <label className="block text-[11px] font-semibold text-zinc-400 mb-1">
+              <label className="block text-[11px] font-medium text-zinc-400 mb-1">
                 Coordinate Proximity Radius
               </label>
               <select
                 value={radiusKm}
                 onChange={(e) => setRadiusKm(Number(e.target.value))}
-                className="w-full px-3 py-2 bg-[#0c0e13] border border-[#202532] rounded-lg text-xs text-white focus:outline-none focus:ring-1 focus:ring-amber-500/60 font-mono"
+                className="w-full px-3 py-1.5 bg-[#11141a] border border-[#212630] rounded-md text-xs text-white focus:outline-none focus:ring-1 focus:ring-blue-500"
               >
                 <option value={100}>Within 100 km</option>
                 <option value={300}>Within 300 km</option>
@@ -418,57 +412,57 @@ export const NotificationSettingsModal: React.FC<NotificationSettingsModalProps>
             </div>
           </div>
 
-          {/* Country-Wide Bulletins Toggle (Opt-in) */}
-          <div className="p-3 rounded-xl bg-[#0c0e13] border border-[#1e2330] space-y-1.5">
+          {/* Country-Wide Bulletins Toggle */}
+          <div className="p-3 rounded-lg bg-[#11141a] border border-[#212630] space-y-1">
             <label className="flex items-start gap-2.5 cursor-pointer">
               <input
                 type="checkbox"
                 checked={wantsCountryWide}
                 onChange={(e) => setWantsCountryWide(e.target.checked)}
-                className="mt-0.5 rounded text-amber-500 focus:ring-amber-500 bg-[#161a24] border-[#252b3a]"
+                className="mt-0.5 rounded text-blue-600 focus:ring-blue-500 bg-[#161b22] border-[#262c36]"
               />
               <div>
-                <span className="text-xs font-semibold text-white">
+                <span className="text-xs font-medium text-white">
                   Receive Country-Wide Emergency Bulletins
                 </span>
-                <p className="text-[11px] text-zinc-400 mt-0.5 leading-relaxed font-mono">
+                <p className="text-[11px] text-zinc-400 mt-0.5 leading-relaxed">
                   Opt in to receive official national emergency bulletins affecting your entire country even if an alert polygon is outside your immediate coordinates. When disabled, you only receive localized notifications verified within your coordinates.
                 </p>
               </div>
             </label>
           </div>
 
-          {/* Alert Categories */}
+          {/* Categories */}
           <div>
-            <label className="block text-[11px] font-semibold text-zinc-400 mb-1.5">
+            <label className="block text-[11px] font-medium text-zinc-400 mb-1">
               Alert Categories
             </label>
-            <div className="space-y-2">
-              <label className="flex items-center gap-2 p-2.5 rounded-lg bg-[#0c0e13] border border-[#1e2330] cursor-pointer hover:bg-[#161a24] transition-colors">
+            <div className="space-y-1.5">
+              <label className="flex items-center gap-2 p-2 rounded-md bg-[#11141a] border border-[#212630] cursor-pointer hover:bg-[#1a1f29] transition-colors">
                 <input
                   type="checkbox"
                   checked={selectedCategories.includes("OFFICIAL_CAP_WARNING")}
                   onChange={() => toggleCategory("OFFICIAL_CAP_WARNING")}
-                  className="rounded text-amber-500 focus:ring-amber-500 bg-[#161a24] border-[#252b3a]"
+                  className="rounded text-blue-600 focus:ring-blue-500 bg-[#161b22] border-[#262c36]"
                 />
                 <div className="text-xs">
-                  <span className="font-semibold text-white">Official CAP Severe Warnings</span>
-                  <p className="text-[10px] text-zinc-500 font-mono">
+                  <span className="font-medium text-white">Official CAP Severe Warnings</span>
+                  <p className="text-[10px] text-zinc-400">
                     National meteorological bulletins (WMO SWIC / Member States)
                   </p>
                 </div>
               </label>
 
-              <label className="flex items-center gap-2 p-2.5 rounded-lg bg-[#0c0e13] border border-[#1e2330] cursor-pointer hover:bg-[#161a24] transition-colors">
+              <label className="flex items-center gap-2 p-2 rounded-md bg-[#11141a] border border-[#212630] cursor-pointer hover:bg-[#1a1f29] transition-colors">
                 <input
                   type="checkbox"
                   checked={selectedCategories.includes("GDACS_DISASTER_ALERT")}
                   onChange={() => toggleCategory("GDACS_DISASTER_ALERT")}
-                  className="rounded text-amber-500 focus:ring-amber-500 bg-[#161a24] border-[#252b3a]"
+                  className="rounded text-blue-600 focus:ring-blue-500 bg-[#161b22] border-[#262c36]"
                 />
                 <div className="text-xs">
-                  <span className="font-semibold text-white">GDACS Multi-Hazard Disasters</span>
-                  <p className="text-[10px] text-zinc-500 font-mono">
+                  <span className="font-medium text-white">GDACS Multi-Hazard Disasters</span>
+                  <p className="text-[10px] text-zinc-400">
                     Tropical cyclones, major floods, earthquakes (UN OCHA / EC)
                   </p>
                 </div>
@@ -478,7 +472,7 @@ export const NotificationSettingsModal: React.FC<NotificationSettingsModalProps>
 
           {/* Minimum Severity */}
           <div>
-            <label className="block text-[11px] font-semibold text-zinc-400 mb-1.5">
+            <label className="block text-[11px] font-medium text-zinc-400 mb-1">
               Minimum Severity Threshold
             </label>
             <div className="grid grid-cols-3 gap-2">
@@ -487,10 +481,10 @@ export const NotificationSettingsModal: React.FC<NotificationSettingsModalProps>
                   key={sev}
                   type="button"
                   onClick={() => setMinSeverity(sev)}
-                  className={`py-1.5 px-2 rounded-lg text-xs font-semibold border transition-all font-mono ${
+                  className={`py-1.5 px-2 rounded-md text-xs font-medium border transition-colors ${
                     minSeverity === sev
-                      ? "bg-amber-500/20 border-amber-500/50 text-amber-300"
-                      : "bg-[#0c0e13] border-[#202532] text-zinc-400 hover:text-white"
+                      ? "bg-blue-600 text-white border-blue-500 font-semibold"
+                      : "bg-[#11141a] border-[#212630] text-zinc-400 hover:text-white"
                   }`}
                 >
                   {sev}+
@@ -505,7 +499,7 @@ export const NotificationSettingsModal: React.FC<NotificationSettingsModalProps>
               <button
                 onClick={handleSavePreferences}
                 disabled={loading || loadingPreferences}
-                className="w-full sm:flex-1 py-2 bg-[#171b24] hover:bg-[#202633] border border-[#252b3a] text-white rounded-lg text-xs font-semibold transition-colors disabled:opacity-50 font-sans"
+                className="w-full sm:flex-1 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-md text-xs font-medium transition-colors disabled:opacity-50"
               >
                 {loadingPreferences ? "Loading Preferences..." : "Save Preferences"}
               </button>
@@ -513,7 +507,7 @@ export const NotificationSettingsModal: React.FC<NotificationSettingsModalProps>
               <button
                 onClick={handleSendDiagnosticTest}
                 disabled={loading}
-                className="w-full sm:w-auto px-4 py-2 bg-amber-500/15 hover:bg-amber-500/25 text-amber-200 border border-amber-500/30 rounded-lg text-xs font-semibold transition-colors flex items-center justify-center gap-1.5 font-sans"
+                className="w-full sm:w-auto px-3.5 py-2 bg-[#1f242c] hover:bg-[#28303d] text-zinc-300 border border-[#2d3441] rounded-md text-xs font-medium transition-colors flex items-center justify-center gap-1.5"
                 title="Send technical diagnostic test notification with no weather claims"
               >
                 <Send className="w-3.5 h-3.5" />
@@ -523,14 +517,14 @@ export const NotificationSettingsModal: React.FC<NotificationSettingsModalProps>
           )}
 
           {testStatus && (
-            <p className="text-[11px] text-zinc-300 bg-[#0c0e13] p-2.5 rounded-lg border border-[#1e2330] font-mono">
+            <p className="text-[11px] text-zinc-300 bg-[#11141a] p-2.5 rounded-md border border-[#212630] font-mono">
               {testStatus}
             </p>
           )}
         </div>
 
         {/* Data Integrity & Privacy Guarantee Notice */}
-        <div className="p-3.5 rounded-xl bg-[#0c0e13] border border-[#1e2330] text-[11px] text-zinc-400 leading-relaxed flex items-start gap-2 font-mono">
+        <div className="p-3 rounded-lg bg-[#11141a] border border-[#212630] text-[11px] text-zinc-400 leading-relaxed flex items-start gap-2">
           <ShieldCheck className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
           <span>
             <strong className="text-zinc-300">Privacy &amp; Data Integrity Invariants:</strong> Subscriptions are possession-bound via private tokens. We never store personal identities or precise continuous geolocation. Push alerts are dispatched strictly upon genuine active bulletins from WMO CAP &amp; GDACS; zero notifications will be simulated or fabricated.

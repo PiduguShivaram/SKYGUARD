@@ -21,7 +21,7 @@ import {
   RiskEvaluationResponse,
   WeatherForecastResponse,
 } from "@/types";
-import { MapPin, CloudSun, Sprout, User, Compass, Globe, Sparkles, Navigation, Target } from "lucide-react";
+import { MapPin, Globe, Info } from "lucide-react";
 
 const POPULAR_CITIES = [
   { name: "Warangal", label: "Warangal, Telangana, India", lat: 17.9784, lon: 79.6005, country: "IN" },
@@ -69,7 +69,7 @@ export default function SkyGuardDashboard() {
         setUpstreamStatus("UNREACHABLE");
       });
 
-    // Pre-fetch global worldwide alerts
+    // Pre-fetch authentic global worldwide alerts
     setLoadingAlerts(true);
     getGlobalAlerts()
       .then((res) => setAlertsData(res))
@@ -77,7 +77,7 @@ export default function SkyGuardDashboard() {
       .finally(() => setLoadingAlerts(false));
   }, []);
 
-  // Fetch forecast, risks, and filtered alerts when location is selected
+  // Fetch forecast, risks, and alerts for selected location
   const fetchLocationData = useCallback(
     async (lat: number, lon: number, label: string, countryCode?: string, filterActive: boolean = true) => {
       setLoadingWeather(true);
@@ -105,7 +105,7 @@ export default function SkyGuardDashboard() {
         setLoadingWeather(false);
       }
 
-      // 3. Fetch Alerts (either filtered by country/radius or global)
+      // 3. Fetch Alerts (filtered by country/radius or global)
       setLoadingAlerts(true);
       try {
         const cCode = filterActive ? countryCode : undefined;
@@ -161,8 +161,8 @@ export default function SkyGuardDashboard() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col bg-[#0b0d10] text-zinc-100 font-sans selection:bg-amber-500 selection:text-black">
-      {/* Header with Mode Switcher & Push Bell */}
+    <div className="min-h-screen flex flex-col bg-[#0e1117] text-zinc-100 font-sans selection:bg-blue-600 selection:text-white">
+      {/* Restrained Application Header */}
       <Header
         upstreamStatus={upstreamStatus}
         currentMode={appMode}
@@ -171,32 +171,32 @@ export default function SkyGuardDashboard() {
         notificationsActive={notificationsActive}
       />
 
-      {/* Main Content Area */}
-      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-7 space-y-7">
+      {/* Main Content Viewport */}
+      <main className="flex-1 max-w-6xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
         {/* Search Bar & Location Selection */}
-        <div className="space-y-3.5">
+        <div className="space-y-3">
           <LocationSearchBar
             onLocationSelect={handleSelectLocation}
             selectedLocation={selectedLocation}
           />
 
-          {/* Global Popular Cities Geodetic Waypoint Chips */}
-          <div className="flex items-center gap-2 overflow-x-auto pb-1 text-xs text-zinc-400 font-mono scrollbar-none">
-            <span className="shrink-0 flex items-center gap-1.5 font-bold text-zinc-500 tracking-wider uppercase text-[10px]">
-              <Target className="w-3.5 h-3.5 text-amber-400" /> Geodetic Waypoints:
+          {/* Quick Location Shortcuts */}
+          <div className="flex items-center gap-1.5 overflow-x-auto pb-1 text-xs text-zinc-400 max-w-2xl mx-auto scrollbar-none">
+            <span className="shrink-0 text-zinc-500 font-medium text-[11px] mr-1">
+              Popular:
             </span>
             {POPULAR_CITIES.map((c) => (
               <button
                 key={c.name}
                 onClick={() => handleSelectQuickCity(c)}
-                className={`shrink-0 px-3 py-1.5 rounded-lg border text-xs font-mono transition-all duration-150 flex items-center gap-1.5 ${
+                className={`shrink-0 px-2.5 py-1 rounded-md border text-xs transition-colors ${
                   selectedLocation?.name === c.name
-                    ? "bg-[#181d28] border-amber-500/50 text-amber-200 font-bold shadow-[0_0_12px_rgba(245,158,11,0.25)]"
-                    : "bg-[#11141b] border-[#202532] text-zinc-300 hover:text-white hover:border-[#333b4e] hover:bg-[#161a24]"
+                    ? "bg-blue-600/15 border-blue-500/40 text-blue-300 font-medium"
+                    : "bg-[#161b22] border-[#262c36] text-zinc-300 hover:text-white hover:border-[#3b4352]"
                 }`}
               >
                 <span>{c.name}</span>
-                <span className="text-[10px] opacity-60">[{c.country}]</span>
+                <span className="text-[10px] text-zinc-500 ml-1">({c.country})</span>
               </button>
             ))}
           </div>
@@ -221,38 +221,19 @@ export default function SkyGuardDashboard() {
           />
         )}
 
-        {/* Initial Prompt State (No location selected yet) */}
+        {/* Initial Useful State: Guidance Bar (No oversized empty-state card) */}
         {!selectedLocation && !loadingWeather && !error && (
-          <div className="relative overflow-hidden p-10 sm:p-12 text-center rounded-2xl bg-[#11141b] border border-[#202532] max-w-xl mx-auto shadow-2xl space-y-4">
-            {/* Geodetic Corner Ticks */}
-            <div className="absolute top-2 left-2 text-[#2b3243] font-mono text-[9px] select-none pointer-events-none">+</div>
-            <div className="absolute top-2 right-2 text-[#2b3243] font-mono text-[9px] select-none pointer-events-none">+</div>
-            <div className="absolute bottom-2 left-2 text-[#2b3243] font-mono text-[9px] select-none pointer-events-none">+</div>
-            <div className="absolute bottom-2 right-2 text-[#2b3243] font-mono text-[9px] select-none pointer-events-none">+</div>
-
-            <div className="w-16 h-16 rounded-xl bg-[#161b24] border border-[#272e3d] text-amber-400 flex items-center justify-center mx-auto shadow-inner">
-              <Compass className="w-8 h-8 stroke-[1.8]" />
-            </div>
-
-            <h2 className="text-xl sm:text-2xl font-extrabold text-white tracking-tight font-sans">
-              Ready for Global Weather &amp; Disaster Intelligence
-            </h2>
-
-            <p className="text-xs sm:text-sm text-zinc-400 leading-relaxed max-w-md mx-auto font-mono">
-              Search any city worldwide or choose a popular city above to query genuine Open-Meteo forecasts alongside live WMO CAP and GDACS international disaster alerts.
-            </p>
-
-            <div className="pt-2 flex items-center justify-center gap-2 text-[10px] font-mono text-zinc-500 uppercase tracking-widest">
-              <span>[ AWAITING GEODETIC TARGET ]</span>
-            </div>
+          <div className="surface-panel p-4 text-center max-w-2xl mx-auto text-xs text-zinc-400 flex items-center justify-center gap-2">
+            <Info className="w-4 h-4 text-blue-400 shrink-0" />
+            <span>Select a location to view local forecasts, or explore active worldwide disaster alerts below.</span>
           </div>
         )}
 
         {/* Loading Skeletons */}
         {loadingWeather && (
-          <div className="space-y-6 animate-pulse">
-            <div className="h-64 bg-[#11141b] rounded-2xl border border-[#202532]"></div>
-            <div className="h-64 bg-[#11141b] rounded-2xl border border-[#202532]"></div>
+          <div className="space-y-4 animate-pulse">
+            <div className="h-48 surface-panel"></div>
+            <div className="h-48 surface-panel"></div>
           </div>
         )}
 
@@ -261,22 +242,22 @@ export default function SkyGuardDashboard() {
           <>
             {/* PUBLIC MODE VIEW */}
             {appMode === "public" && (
-              <div className="space-y-7">
-                {/* Current Conditions Hero Card */}
+              <div className="space-y-6">
+                {/* 1. Current Conditions Hero */}
                 <CurrentWeatherCard
                   weather={weatherData}
-                  locationLabel={selectedLocation?.formatted_label || "Selected Coordinates"}
+                  locationLabel={selectedLocation?.formatted_label || "Selected Location"}
                 />
 
-                {/* 24-Hour Hourly Trend Curve */}
+                {/* 2. Immediate Outlook: 24-Hour Hourly Forecast Ribbon */}
                 <HourlyChart hourly={weatherData.hourly} units={weatherData.units} />
 
-                {/* Synoptic Operations Grid: 7-Day Horizon & Risk Analysis */}
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-7">
+                {/* 3. Balanced Two-Column Operations Grid */}
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                   {/* Seven-Day Daily Summary */}
                   <DailyForecastList daily={weatherData.daily} units={weatherData.units} />
 
-                  {/* Phase 3: Derived Scientific Weather Risk Indicators */}
+                  {/* Derived Scientific Weather Risk Indicators */}
                   <DerivedRiskCard riskData={riskData} loading={loadingRisk} />
                 </div>
               </div>
@@ -284,14 +265,14 @@ export default function SkyGuardDashboard() {
 
             {/* FARMER MODE VIEW */}
             {appMode === "farmer" && (
-              <div className="space-y-7">
-                {/* Phase 4: Gated Farmer Mode Agrometeorology Panel */}
+              <div className="space-y-6">
+                {/* Gated Farmer Mode Agrometeorology Panel */}
                 <FarmerModePanel daily={weatherData.daily} />
 
                 {/* Current Weather Card */}
                 <CurrentWeatherCard
                   weather={weatherData}
-                  locationLabel={selectedLocation?.formatted_label || "Selected Coordinates"}
+                  locationLabel={selectedLocation?.formatted_label || "Selected Location"}
                 />
 
                 {/* Seven-Day Daily Summary */}
@@ -301,7 +282,7 @@ export default function SkyGuardDashboard() {
           </>
         )}
 
-        {/* Phase 2: Worldwide Weather & Disaster Alerts Panel */}
+        {/* Worldwide Weather & Disaster Alerts Section */}
         <GlobalAlertsPanel
           alertsData={alertsData}
           loading={loadingAlerts}
@@ -333,7 +314,7 @@ export default function SkyGuardDashboard() {
       {/* Provenance & Transparency Footer */}
       <ProvenanceFooter weather={weatherData} />
 
-      {/* Global Push Notification Modal */}
+      {/* Web Push Notification Modal */}
       <NotificationSettingsModal
         isOpen={isNotificationModalOpen}
         onClose={() => setIsNotificationModalOpen(false)}

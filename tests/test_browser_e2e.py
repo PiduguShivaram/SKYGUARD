@@ -33,8 +33,10 @@ async def test_playwright_public_mode_multi_location(page: Page = None):
         title = await page.title()
         assert "SkyGuard" in title
 
-        # Verify initial prompt
-        await page.wait_for_selector("text=Ready for Global Weather & Disaster Intelligence", timeout=15000)
+        # Verify initial prompt and save initial state screenshot
+        await page.wait_for_selector("text=Select a location to view local forecasts", timeout=15000)
+        os.makedirs("docs/screenshots", exist_ok=True)
+        await page.screenshot(path="docs/screenshots/skyguard_initial_screen.png")
         await page.wait_for_timeout(1000)
 
         # Click Warangal chip
@@ -82,7 +84,7 @@ async def test_playwright_farmer_mode_crop_stress(page: Page = None):
         page = await context.new_page()
         should_close = True
         await page.goto("http://localhost:3000", wait_until="networkidle")
-        await page.wait_for_selector("text=Ready for Global Weather & Disaster Intelligence", timeout=15000)
+        await page.wait_for_selector("text=Select a location to view local forecasts", timeout=15000)
         await page.wait_for_timeout(1000)
         warangal_btn = page.locator("button:has-text('Warangal')")
         await warangal_btn.click()
@@ -212,6 +214,8 @@ async def test_playwright_global_alerts_and_modal_inspection(page: Page = None):
             await inspect_btn.click()
             await page.wait_for_timeout(600)
             assert await page.locator("text=Official Advisory Bulletin").is_visible()
+            os.makedirs("docs/screenshots", exist_ok=True)
+            await page.screenshot(path="docs/screenshots/skyguard_alert_detail_verified.png")
             await page.locator("button:has-text('Close')").click()
             await page.wait_for_timeout(300)
 
@@ -228,31 +232,37 @@ async def test_playwright_global_alerts_and_modal_inspection(page: Page = None):
 
 @pytest.mark.asyncio
 async def test_playwright_mobile_responsive_layout():
-    """Verify accessible responsive rendering on mobile (375x667) and tablet (768x1024) viewports."""
-    print("\n--- Test Suite 5: Responsive Mobile & Tablet Layout ---")
+    """Verify accessible responsive rendering across standard design review viewports:
+    1440px desktop, 1024px tablet, 768px tablet, 390px mobile, and 360px mobile compact.
+    """
+    print("\n--- Test Suite 5: Responsive Multi-Viewport Visual Review ---")
+    os.makedirs("docs/screenshots", exist_ok=True)
+    viewports = [
+        ("docs/screenshots/skyguard_1440_desktop.png", 1440, 900),
+        ("docs/screenshots/skyguard_1024_tablet.png", 1024, 768),
+        ("docs/screenshots/skyguard_768_tablet.png", 768, 1024),
+        ("docs/screenshots/skyguard_390_mobile.png", 390, 844),
+        ("docs/screenshots/skyguard_360_mobile.png", 360, 740),
+    ]
+
     async with async_playwright() as p:
         browser = await p.chromium.launch(headless=True)
 
-        # 1. Mobile iPhone SE viewport
-        mobile_context = await browser.new_context(viewport={"width": 375, "height": 667})
-        mobile_page = await mobile_context.new_page()
-        await mobile_page.goto("http://localhost:3000", wait_until="networkidle")
+        for filename, width, height in viewports:
+            ctx = await browser.new_context(viewport={"width": width, "height": height})
+            vp_page = await ctx.new_page()
+            await vp_page.goto("http://localhost:3000", wait_until="networkidle")
 
-        # Header branding visible on mobile
-        assert await mobile_page.locator("text=SkyGuard").first.is_visible()
-        # Worldwide alerts panel visible
-        assert await mobile_page.locator("text=Worldwide Weather & Disaster Alerts").is_visible()
-        await mobile_context.close()
+            # Check branding and alerts visibility
+            assert await vp_page.locator("text=SkyGuard").first.is_visible()
+            assert await vp_page.locator("text=Worldwide Weather & Disaster Alerts").is_visible()
 
-        # 2. Tablet iPad viewport
-        tablet_context = await browser.new_context(viewport={"width": 768, "height": 1024})
-        tablet_page = await tablet_context.new_page()
-        await tablet_page.goto("http://localhost:3000", wait_until="networkidle")
-        assert await tablet_page.locator("text=SkyGuard").first.is_visible()
-        await tablet_context.close()
+            # Save screenshot for visual review
+            await vp_page.screenshot(path=filename)
+            await ctx.close()
 
         await browser.close()
-        print("✓ Suite 5 (Mobile & Tablet Layouts) successfully verified.")
+        print("✓ Suite 5 (Multi-Viewport Visual Review: 1440, 1024, 768, 390, 360px) successfully verified.")
 
 
 async def run_all_e2e_suites():

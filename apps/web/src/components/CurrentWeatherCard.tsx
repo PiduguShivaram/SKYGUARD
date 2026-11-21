@@ -14,12 +14,8 @@ import {
   Thermometer,
   Clock,
   Compass,
-  MapPin,
-  Gauge,
-  Eye,
-  ArrowUpRight,
-  Shield,
-  Layers,
+  ArrowUp,
+  ArrowDown,
 } from "lucide-react";
 import { WeatherForecastResponse } from "@/types";
 
@@ -31,6 +27,7 @@ interface CurrentWeatherCardProps {
 export const CurrentWeatherCard: React.FC<CurrentWeatherCardProps> = ({ weather, locationLabel }) => {
   const current = weather.current;
   const units = weather.units || {};
+  const todayDaily = weather.daily && weather.daily.length > 0 ? weather.daily[0] : null;
 
   const tempUnit = units.temperature || "°C";
   const humidityUnit = units.relative_humidity || "%";
@@ -42,181 +39,168 @@ export const CurrentWeatherCard: React.FC<CurrentWeatherCardProps> = ({ weather,
     switch (iconName) {
       case "clear":
         return isDay ? (
-          <Sun className="w-12 h-12 text-amber-400 drop-shadow-[0_0_12px_rgba(245,158,11,0.4)]" />
+          <Sun className="w-10 h-10 text-amber-400" />
         ) : (
-          <Sun className="w-12 h-12 text-amber-200/80 drop-shadow-[0_0_12px_rgba(253,230,138,0.25)]" />
+          <Sun className="w-10 h-10 text-zinc-300" />
         );
       case "mostly-clear":
       case "partly-cloudy":
-        return <CloudSun className="w-12 h-12 text-amber-300 drop-shadow-[0_0_12px_rgba(252,211,77,0.3)]" />;
+        return <CloudSun className="w-10 h-10 text-amber-300" />;
       case "overcast":
       case "cloudy":
-        return <Cloud className="w-12 h-12 text-zinc-300" />;
+        return <Cloud className="w-10 h-10 text-zinc-300" />;
       case "rain":
       case "drizzle":
       case "rain-showers":
       case "heavy-rain":
-        return <CloudRain className="w-12 h-12 text-sky-400" />;
+        return <CloudRain className="w-10 h-10 text-blue-400" />;
       case "thunderstorm":
       case "thunderstorm-hail":
-        return <CloudLightning className="w-12 h-12 text-amber-500 drop-shadow-[0_0_15px_rgba(245,158,11,0.5)]" />;
+        return <CloudLightning className="w-10 h-10 text-amber-500" />;
       case "fog":
-        return <CloudFog className="w-12 h-12 text-zinc-400" />;
+        return <CloudFog className="w-10 h-10 text-zinc-400" />;
       case "snow":
       case "heavy-snow":
-        return <Snowflake className="w-12 h-12 text-sky-200" />;
+        return <Snowflake className="w-10 h-10 text-sky-200" />;
       default:
-        return <CloudSun className="w-12 h-12 text-amber-300" />;
+        return <CloudSun className="w-10 h-10 text-zinc-300" />;
     }
   };
 
   return (
-    <div className="relative overflow-hidden rounded-2xl bg-[#11141b] border border-[#202532] p-6 sm:p-7 shadow-2xl">
-      {/* Geodetic Crosshair Corner Ticks */}
-      <div className="absolute top-2 left-2 text-[#2b3243] font-mono text-[9px] select-none pointer-events-none">+</div>
-      <div className="absolute top-2 right-2 text-[#2b3243] font-mono text-[9px] select-none pointer-events-none">+</div>
-      <div className="absolute bottom-2 left-2 text-[#2b3243] font-mono text-[9px] select-none pointer-events-none">+</div>
-      <div className="absolute bottom-2 right-2 text-[#2b3243] font-mono text-[9px] select-none pointer-events-none">+</div>
-
-      {/* Header: Location & Model Grid Cell Metadata */}
-      <div className="relative z-10 flex flex-col md:flex-row md:items-start justify-between gap-4 pb-5 border-b border-[#1c212c]">
-        <div className="space-y-1.5">
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-amber-300 bg-amber-500/10 px-2.5 py-0.5 rounded border border-amber-500/25">
+    <div className="surface-panel p-6 sm:p-7 shadow-sm">
+      {/* Location Headline & Model Disclosure */}
+      <div className="flex flex-col md:flex-row md:items-start justify-between gap-4 pb-5 border-b border-[#262c36]">
+        <div className="space-y-1">
+          <div className="flex items-center gap-2">
+            <span className="text-[11px] font-medium text-zinc-400 uppercase tracking-wider">
               NWP Model-Estimated Current Conditions
-            </span>
-            <span className="text-[10px] font-mono font-medium px-2 py-0.5 rounded bg-[#171a22] text-zinc-400 border border-[#242b38]">
-              Numerical Model Grid Cell
-            </span>
-            <span className="text-[10px] font-mono text-zinc-500">
-              [DATUM: WGS-84]
             </span>
           </div>
 
-          <h2 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight pt-1 font-sans">
+          <h2 className="text-2xl sm:text-3xl font-bold text-white tracking-tight font-sans">
             {locationLabel || `${weather.latitude.toFixed(2)}°N, ${weather.longitude.toFixed(2)}°E`}
           </h2>
 
-          <div className="text-xs text-zinc-400 font-mono space-y-1 pt-1 leading-relaxed">
-            <p className="text-[11px] text-zinc-400">
-              Derived from Open-Meteo NWP model simulation (grid cell {weather.latitude.toFixed(4)}°N, {weather.longitude.toFixed(4)}°E); not an in-situ physical station observation.
-            </p>
-            <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px] text-zinc-500">
-              <span>
-                Requested: {weather.requested_latitude.toFixed(4)}°N, {weather.requested_longitude.toFixed(4)}°E
-                {weather.elevation !== undefined && weather.elevation !== null ? ` · Elev: ${weather.elevation}m` : ""}
-              </span>
-              <span>
-                Timezone: {weather.timezone} {weather.timezone_abbreviation ? `(${weather.timezone_abbreviation})` : ""}
-                {weather.utc_offset_seconds !== undefined ? ` [UTC ${weather.utc_offset_seconds >= 0 ? "+" : ""}${(weather.utc_offset_seconds / 3600).toFixed(1)}h]` : ""}
-              </span>
-            </div>
+          <p className="text-xs text-zinc-400 leading-relaxed max-w-2xl">
+            Derived from Open-Meteo NWP model simulation (grid cell {weather.latitude.toFixed(4)}°N, {weather.longitude.toFixed(4)}°E); not an in-situ physical station observation.
+          </p>
+
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-zinc-500 font-mono pt-0.5">
+            <span>
+              Requested: {weather.requested_latitude.toFixed(4)}°N, {weather.requested_longitude.toFixed(4)}°E
+              {weather.elevation !== undefined && weather.elevation !== null ? ` · Elevation: ${weather.elevation}m` : ""}
+            </span>
+            <span>·</span>
+            <span>
+              Timezone: {weather.timezone} {weather.timezone_abbreviation ? `(${weather.timezone_abbreviation})` : ""}
+            </span>
           </div>
         </div>
 
-        {/* Valid observation time from provider */}
-        <div className="flex items-center gap-2.5 text-xs text-zinc-300 bg-[#0c0e13] px-3.5 py-2.5 rounded-xl border border-[#1e2330] shrink-0 self-start shadow-inner">
-          <div className="p-1.5 rounded bg-[#171b24] text-amber-400 border border-[#252b3a]">
-            <Clock className="w-3.5 h-3.5" />
-          </div>
+        {/* Observation Timestamp */}
+        <div className="flex items-center gap-2 text-xs text-zinc-400 bg-[#11141a] px-3 py-2 rounded-lg border border-[#212630] shrink-0 self-start">
+          <Clock className="w-3.5 h-3.5 text-zinc-400" />
           <div>
-            <p className="text-[9px] text-zinc-500 uppercase font-mono font-bold tracking-wider">Provider Valid Time</p>
-            <p className="font-mono font-semibold text-zinc-200 text-xs">{current.time}</p>
+            <span className="text-[10px] uppercase text-zinc-500 block leading-tight font-medium">Valid Time</span>
+            <span className="font-mono text-zinc-300 text-xs">{current.time}</span>
           </div>
         </div>
       </div>
 
-      {/* Main Temperature and Weather Icon Cockpit */}
-      <div className="relative z-10 py-5 flex flex-col lg:flex-row lg:items-center justify-between gap-6 border-b border-[#1c212c]">
+      {/* Main Temperature and Conditions Focal Point */}
+      <div className="py-6 flex flex-col sm:flex-row sm:items-center justify-between gap-6 border-b border-[#262c36]">
         <div className="flex items-center gap-5">
-          <div className="p-3.5 rounded-xl bg-[#0c0e13] border border-[#202533] shadow-inner">
+          <div className="p-3 rounded-lg bg-[#11141a] border border-[#212630] shrink-0">
             {getWeatherIcon(current.weather_icon, current.is_day)}
           </div>
-          <div className="space-y-0.5">
-            <div className="flex items-baseline gap-2">
-              <span className="text-6xl sm:text-7xl font-black text-white tracking-tighter font-mono">
+
+          <div>
+            <div className="flex items-baseline gap-1.5">
+              <span className="text-5xl sm:text-6xl font-extrabold text-white tracking-tight tabular-nums font-sans">
                 {Math.round(current.temperature_2m)}
               </span>
-              <span className="text-3xl sm:text-4xl font-bold text-amber-400 font-mono">
+              <span className="text-2xl sm:text-3xl font-medium text-zinc-400 font-sans">
                 {tempUnit}
               </span>
             </div>
-            <div className="flex items-center gap-2">
-              <span className="text-base font-bold text-zinc-200 capitalize">
-                {current.weather_description || "Clear Sky"}
+
+            <div className="flex items-center gap-2 text-sm text-zinc-300 mt-1">
+              <span className="font-medium capitalize">{current.weather_description || "Clear Sky"}</span>
+              <span className="text-zinc-500">·</span>
+              <span className="text-zinc-400">
+                Feels like <strong className="text-zinc-200 font-medium">{Math.round(current.apparent_temperature)}{apparentUnit}</strong>
               </span>
-              <span className="text-xs text-zinc-400 font-medium font-mono">
-                · Feels like <span className="text-white font-semibold">{Math.round(current.apparent_temperature)}{apparentUnit}</span>
-              </span>
+              {todayDaily && (
+                <>
+                  <span className="text-zinc-500">·</span>
+                  <span className="text-zinc-400 flex items-center gap-1 font-mono text-xs">
+                    <span>H: {Math.round(todayDaily.temperature_2m_max)}°</span>
+                    <span>L: {Math.round(todayDaily.temperature_2m_min)}°</span>
+                  </span>
+                </>
+              )}
             </div>
           </div>
         </div>
 
-        {/* Day / Night & Wind Quick Pill */}
-        <div className="flex flex-wrap items-center gap-2">
-          <div className="px-3 py-1.5 rounded-lg bg-[#0c0e13] border border-[#1e2330] text-xs font-mono flex items-center gap-2">
-            <span className={`w-2 h-2 rounded-full ${current.is_day ? "bg-amber-400 shadow-[0_0_8px_#f59e0b]" : "bg-indigo-400"}`} />
-            <span className="text-zinc-300 font-medium">{current.is_day ? "Solar Daylight" : "Night Cycle"}</span>
+        {/* Day Cycle & Wind Capsule */}
+        <div className="flex items-center gap-2.5">
+          <div className="px-3 py-1.5 rounded-md bg-[#11141a] border border-[#212630] text-xs text-zinc-300 flex items-center gap-2">
+            <span className={`w-2 h-2 rounded-full ${current.is_day ? "bg-amber-400" : "bg-indigo-400"}`} />
+            <span>{current.is_day ? "Daylight" : "Night"}</span>
           </div>
-          <div className="px-3 py-1.5 rounded-lg bg-[#0c0e13] border border-[#1e2330] text-xs font-mono flex items-center gap-2">
-            <Wind className="w-3.5 h-3.5 text-amber-400" />
-            <span className="text-zinc-300 font-medium">{current.wind_speed_10m} {windUnit} ({current.wind_direction_10m}°)</span>
+          <div className="px-3 py-1.5 rounded-md bg-[#11141a] border border-[#212630] text-xs text-zinc-300 flex items-center gap-1.5">
+            <Wind className="w-3.5 h-3.5 text-zinc-400" />
+            <span className="font-mono">{current.wind_speed_10m} {windUnit}</span>
           </div>
         </div>
       </div>
 
-      {/* Quadrant Calibrated Gauge Grid */}
-      <div className="relative z-10 grid grid-cols-2 sm:grid-cols-4 gap-3 pt-5">
-        {/* Humidity */}
-        <div className="p-3.5 rounded-xl bg-[#0c0e13] border border-[#1e2330] shadow-inner space-y-1">
-          <div className="flex items-center justify-between text-zinc-500">
-            <span className="text-[10px] font-mono uppercase tracking-wider">Rel. Humidity</span>
-            <Droplets className="w-3.5 h-3.5 text-sky-400" />
-          </div>
-          <p className="text-xl font-bold text-white font-mono">
-            {current.relative_humidity_2m}
-            <span className="text-xs text-zinc-400 ml-0.5">{humidityUnit}</span>
+      {/* Atmospheric Metrics Grid */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-5">
+        <div className="p-3 rounded-lg bg-[#11141a] border border-[#212630]">
+          <span className="text-[11px] font-medium text-zinc-400 flex items-center justify-between">
+            Humidity
+            <Droplets className="w-3.5 h-3.5 text-blue-400" />
+          </span>
+          <p className="text-lg font-semibold text-white mt-1 font-mono">
+            {current.relative_humidity_2m}{humidityUnit}
           </p>
-          <p className="text-[10px] text-zinc-500 font-mono">Atmospheric moisture</p>
+          <span className="text-[10px] text-zinc-500 block mt-0.5">Moisture level</span>
         </div>
 
-        {/* Thermal Index / Feels-like */}
-        <div className="p-3.5 rounded-xl bg-[#0c0e13] border border-[#1e2330] shadow-inner space-y-1">
-          <div className="flex items-center justify-between text-zinc-500">
-            <span className="text-[10px] font-mono uppercase tracking-wider">Apparent Temp</span>
+        <div className="p-3 rounded-lg bg-[#11141a] border border-[#212630]">
+          <span className="text-[11px] font-medium text-zinc-400 flex items-center justify-between">
+            Apparent Temp
             <Thermometer className="w-3.5 h-3.5 text-amber-400" />
-          </div>
-          <p className="text-xl font-bold text-white font-mono">
-            {Math.round(current.apparent_temperature)}
-            <span className="text-xs text-zinc-400 ml-0.5">{apparentUnit}</span>
+          </span>
+          <p className="text-lg font-semibold text-white mt-1 font-mono">
+            {Math.round(current.apparent_temperature)}{apparentUnit}
           </p>
-          <p className="text-[10px] text-zinc-500 font-mono">Biometeorological delta</p>
+          <span className="text-[10px] text-zinc-500 block mt-0.5">Biometeorological</span>
         </div>
 
-        {/* Precipitation Rate */}
-        <div className="p-3.5 rounded-xl bg-[#0c0e13] border border-[#1e2330] shadow-inner space-y-1">
-          <div className="flex items-center justify-between text-zinc-500">
-            <span className="text-[10px] font-mono uppercase tracking-wider">Precipitation</span>
-            <CloudRain className="w-3.5 h-3.5 text-sky-400" />
-          </div>
-          <p className="text-xl font-bold text-white font-mono">
-            {current.precipitation !== undefined ? current.precipitation.toFixed(1) : "0.0"}
-            <span className="text-xs text-zinc-400 ml-0.5">{precipUnit}</span>
+        <div className="p-3 rounded-lg bg-[#11141a] border border-[#212630]">
+          <span className="text-[11px] font-medium text-zinc-400 flex items-center justify-between">
+            Precipitation
+            <CloudRain className="w-3.5 h-3.5 text-blue-400" />
+          </span>
+          <p className="text-lg font-semibold text-white mt-1 font-mono">
+            {current.precipitation !== undefined ? current.precipitation.toFixed(1) : "0.0"} {precipUnit}
           </p>
-          <p className="text-[10px] text-zinc-500 font-mono">Instantaneous gauge</p>
+          <span className="text-[10px] text-zinc-500 block mt-0.5">Current rate</span>
         </div>
 
-        {/* WMO Weather Code */}
-        <div className="p-3.5 rounded-xl bg-[#0c0e13] border border-[#1e2330] shadow-inner space-y-1">
-          <div className="flex items-center justify-between text-zinc-500">
-            <span className="text-[10px] font-mono uppercase tracking-wider">WMO Synoptic Code</span>
-            <Gauge className="w-3.5 h-3.5 text-zinc-400" />
-          </div>
-          <p className="text-xl font-bold text-white font-mono">
-            {current.weather_code}
-            <span className="text-xs text-zinc-400 ml-0.5">SYNOP</span>
+        <div className="p-3 rounded-lg bg-[#11141a] border border-[#212630]">
+          <span className="text-[11px] font-medium text-zinc-400 flex items-center justify-between">
+            Wind Direction
+            <Compass className="w-3.5 h-3.5 text-zinc-400" />
+          </span>
+          <p className="text-lg font-semibold text-white mt-1 font-mono">
+            {current.wind_direction_10m !== undefined ? `${current.wind_direction_10m}°` : "N/A"}
           </p>
-          <p className="text-[10px] text-zinc-500 font-mono">Standardized observation</p>
+          <span className="text-[10px] text-zinc-500 block mt-0.5">Compass bearing</span>
         </div>
       </div>
     </div>

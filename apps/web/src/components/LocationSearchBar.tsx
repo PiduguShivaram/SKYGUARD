@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useRef } from "react";
-import { Search, MapPin, Loader2, AlertCircle, Compass, X, Target } from "lucide-react";
+import { Search, MapPin, Loader2, AlertCircle, X, Navigation, Clock, History } from "lucide-react";
 import { searchLocations } from "@/lib/api";
 import { LocationSearchResult } from "@/types";
 
@@ -20,10 +20,42 @@ export const LocationSearchBar: React.FC<LocationSearchBarProps> = ({
   const [hasSearched, setHasSearched] = useState(false);
   const [searchError, setSearchError] = useState<string | null>(null);
   const [isOpen, setIsOpen] = useState(false);
+  const [recentLocations, setRecentLocations] = useState<LocationSearchResult[]>([]);
+  const [locatingUser, setLocatingUser] = useState(false);
+  const [geoError, setGeoError] = useState<string | null>(null);
+
   const dropdownRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  // Debounced search against real Open-Meteo Geocoding
+  // Load recent locations from localStorage on mount
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      try {
+        const stored = localStorage.getItem("skyguard_recent_locations");
+        if (stored) {
+          setRecentLocations(JSON.parse(stored).slice(0, 5));
+        }
+      } catch (e) {
+        console.error("Failed to parse recent locations:", e);
+      }
+    }
+  }, []);
+
+  // Save selected location to recent list
+  const saveRecentLocation = (loc: LocationSearchResult) => {
+    try {
+      const filtered = recentLocations.filter(
+        (item) => !(item.latitude === loc.latitude && item.longitude === loc.longitude)
+      );
+      const updated = [loc, ...filtered].slice(0, 5);
+      setRecentLocations(updated);
+      localStorage.setItem("skyguard_recent_locations", JSON.stringify(updated));
+    } catch (e) {
+      console.error("Failed to save recent location:", e);
+    }
+  };
+
+  // Debounced search against Open-Meteo Geocoding
   useEffect(() => {
     const trimmed = query.trim();
     if (trimmed.length < 2) {
@@ -43,8 +75,8 @@ export const LocationSearchBar: React.FC<LocationSearchBarProps> = ({
         setHasSearched(true);
         setIsOpen(true);
       } catch (err: any) {
-        console.error("Geocoding lookup error:", err);
-        setSearchError(err.message || "Failed to query geocoding provider.");
+        console.error("Geocoding error:", err);
+        setSearchError(err.message || "Failed to search locations.");
         setResults([]);
         setIsOpen(true);
       } finally {
@@ -68,6 +100,7 @@ export const LocationSearchBar: React.FC<LocationSearchBarProps> = ({
 
   const handleSelect = (loc: LocationSearchResult) => {
     onLocationSelect(loc);
+    saveRecentLocation(loc);
     setQuery("");
     setIsOpen(false);
   };
@@ -79,107 +112,155 @@ export const LocationSearchBar: React.FC<LocationSearchBarProps> = ({
     inputRef.current?.focus();
   };
 
+  const handleUseMyLocation = () => {
+    setGeoError(null);
+    if (!navigator.geolocation) {
+      setGeoError("Geolocation is not supported by your browser.");
+      return;
+    }
+
+    setLocatingUser(true);
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        setLocatingUser(false);
+        const lat = position.coords.latitude;
+        const lon = position.coords.longitude;
+        const loc: LocationSearchResult = {
+          id: Math.round(lat * 10000 + lon * 100),
+          name: "Current Location",
+          latitude: lat,
+          longitude: lon,
+          formatted_label: `${lat.toFixed(2)}°N, ${lon.toFixed(2)}°E`,
+        };
+        onLocationSelect(loc);
+        saveRecentLocation(loc);
+      },
+      (err) => {
+        setLocatingUser(false);
+        if (err.code === err.PERMISSION_DENIED) {
+          setGeoError("Location permission denied. Please allow location access or search manually.");
+        } else {
+          setGeoError("Unable to retrieve your current location.");
+        }
+      },
+      { timeout: 10000, enableHighAccuracy: false }
+    );
+  };
+
   return (
-    <div className="w-full relative" ref={dropdownRef}>
-      <div className="flex items-center justify-between mb-2">
-        <label htmlFor="location-search" className="block text-xs font-mono font-bold tracking-widest uppercase text-zinc-400 flex items-center gap-1.5">
-          <Target className="w-3.5 h-3.5 text-amber-400" />
-          <span>Search Location (City, Town, or District)</span>
+    <div className="w-full relative max-w-2xl mx-auto" ref={dropdownRef}>
+      <div className="flex items-center justify-between mb-1.5">
+        <label htmlFor="location-search" className="text-xs font-medium text-zinc-400">
+          Search Location
         </label>
         {selectedLocation && (
-          <span className="text-[11px] font-mono text-amber-400/90 flex items-center gap-1 px-2 py-0.5 rounded bg-amber-500/10 border border-amber-500/20">
-            <Compass className="w-3 h-3 text-amber-400" />
-            <span>{selectedLocation.latitude.toFixed(2)}°N, {selectedLocation.longitude.toFixed(2)}°E</span>
+          <span className="text-[11px] text-zinc-400 font-mono">
+            {selectedLocation.latitude.toFixed(2)}°N, {selectedLocation.longitude.toFixed(2)}°E
           </span>
         )}
       </div>
 
-      <div className="relative group">
-        <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-zinc-400 group-focus-within:text-amber-400 transition-colors">
-          {loading ? (
-            <Loader2 className="w-4 h-4 animate-spin text-amber-400" />
-          ) : (
-            <Search className="w-4 h-4" />
-          )}
-        </div>
+      <div className="flex items-center gap-2">
+        <div className="relative flex-1 group">
+          <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-zinc-400">
+            {loading ? (
+              <Loader2 className="w-4 h-4 animate-spin text-blue-500" />
+            ) : (
+              <Search className="w-4 h-4" />
+            )}
+          </div>
 
-        <input
-          ref={inputRef}
-          id="location-search"
-          type="text"
-          className="w-full pl-10 pr-24 py-3 bg-[#11141b] border border-[#202633] rounded-xl text-sm text-white placeholder-zinc-500 focus:outline-none focus:ring-1 focus:ring-amber-500/60 focus:border-amber-500/70 transition-all font-mono shadow-inner"
-          placeholder={
-            selectedLocation
-              ? `Target: ${selectedLocation.formatted_label}`
-              : "Enter target coordinates or city name (e.g. Warangal, Tokyo, London, Sydney)..."
-          }
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          onFocus={() => (results.length > 0 || hasSearched || searchError) && setIsOpen(true)}
-          autoComplete="off"
-        />
+          <input
+            ref={inputRef}
+            id="location-search"
+            type="text"
+            className="w-full pl-10 pr-10 py-2.5 bg-[#161b22] border border-[#262c36] rounded-lg text-sm text-white placeholder-zinc-500 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 transition-colors shadow-sm"
+            placeholder={
+              selectedLocation
+                ? selectedLocation.formatted_label
+                : "Search city, town, or district..."
+            }
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            onFocus={() => setIsOpen(true)}
+            autoComplete="off"
+          />
 
-        <div className="absolute inset-y-0 right-0 pr-3 flex items-center gap-1.5">
           {query && (
             <button
               type="button"
               onClick={handleClear}
-              className="p-1 text-zinc-400 hover:text-white rounded-md hover:bg-white/[0.06] transition-colors"
+              className="absolute inset-y-0 right-0 pr-3 flex items-center text-zinc-400 hover:text-white"
               title="Clear search"
             >
-              <X className="w-3.5 h-3.5" />
+              <X className="w-4 h-4" />
             </button>
           )}
-          <span className="hidden sm:inline-block text-[10px] font-mono font-medium text-zinc-500 bg-[#161a24] border border-[#262c3b] px-1.5 py-0.5 rounded">
-            /
-          </span>
         </div>
+
+        {/* Use My Location Button */}
+        <button
+          type="button"
+          onClick={handleUseMyLocation}
+          disabled={locatingUser}
+          className="shrink-0 flex items-center gap-1.5 px-3 py-2.5 bg-[#161b22] hover:bg-[#1f242c] text-zinc-300 hover:text-white border border-[#262c36] rounded-lg text-xs font-medium transition-colors disabled:opacity-50"
+          title="Use current device location"
+        >
+          {locatingUser ? (
+            <Loader2 className="w-3.5 h-3.5 animate-spin text-blue-400" />
+          ) : (
+            <Navigation className="w-3.5 h-3.5 text-blue-400" />
+          )}
+          <span className="hidden sm:inline">Use my location</span>
+        </button>
       </div>
 
-      {/* Autocomplete Dropdown */}
+      {geoError && (
+        <p className="mt-1.5 text-xs text-rose-400 flex items-center gap-1">
+          <AlertCircle className="w-3.5 h-3.5" />
+          <span>{geoError}</span>
+        </p>
+      )}
+
+      {/* Autocomplete / Recent Dropdown */}
       {isOpen && (
-        <div className="absolute left-0 right-0 mt-2 z-50 rounded-xl bg-[#0f1218] border border-[#262d3d] shadow-2xl overflow-hidden divide-y divide-[#1e2330] animate-in fade-in-50 slide-in-from-top-2 duration-150">
+        <div className="absolute left-0 right-0 mt-1.5 z-50 rounded-lg bg-[#161b22] border border-[#262c36] shadow-xl overflow-hidden divide-y divide-[#212630] animate-in fade-in-50 duration-100">
           {loading && (
-            <div className="p-4 flex items-center justify-center gap-2 text-xs text-zinc-400 font-mono">
-              <Loader2 className="w-4 h-4 animate-spin text-amber-400" />
-              <span>Querying Open-Meteo Global Geocoding API...</span>
+            <div className="p-3 text-center text-xs text-zinc-400 flex items-center justify-center gap-2">
+              <Loader2 className="w-3.5 h-3.5 animate-spin text-blue-500" />
+              <span>Searching Open-Meteo geocoding...</span>
             </div>
           )}
 
           {searchError && (
-            <div className="p-4 flex items-start gap-2.5 text-xs text-rose-300 bg-rose-950/20 font-mono">
-              <AlertCircle className="w-4 h-4 text-rose-400 shrink-0 mt-0.5" />
-              <div>
-                <p className="font-bold">Geocoding Error</p>
-                <p className="text-[11px] text-rose-300/80 mt-0.5">{searchError}</p>
-              </div>
+            <div className="p-3 text-xs text-rose-300 bg-rose-950/20 flex items-center gap-2">
+              <AlertCircle className="w-4 h-4 text-rose-400 shrink-0" />
+              <span>{searchError}</span>
             </div>
           )}
 
           {!loading && !searchError && results.length === 0 && hasSearched && (
-            <div className="p-6 text-center text-xs text-zinc-400 font-mono">
-              <p>No geographic matching coordinates found for &quot;{query}&quot;.</p>
-              <p className="text-[11px] text-zinc-500 mt-1">Try another municipality, district, or coordinate pair.</p>
+            <div className="p-4 text-center text-xs text-zinc-400">
+              No matching locations found for &quot;{query}&quot;.
             </div>
           )}
 
+          {/* Search Results */}
           {!loading && results.length > 0 && (
-            <div className="max-h-80 overflow-y-auto">
-              <div className="px-3.5 py-2 text-[10px] font-mono uppercase tracking-wider text-zinc-500 bg-[#0c0e13]">
-                Matched Geodetic Coordinates ({results.length})
+            <div className="max-h-64 overflow-y-auto">
+              <div className="px-3 py-1.5 text-[11px] font-medium text-zinc-500 uppercase tracking-wider bg-[#11141a]">
+                Search Results
               </div>
               {results.map((loc) => (
                 <button
                   key={`${loc.id}-${loc.latitude}-${loc.longitude}`}
                   onClick={() => handleSelect(loc)}
-                  className="w-full text-left px-4 py-3 flex items-center justify-between hover:bg-[#181d27] transition-colors group"
+                  className="w-full text-left px-3.5 py-2.5 flex items-center justify-between hover:bg-[#1f242c] transition-colors group"
                 >
-                  <div className="flex items-center gap-3">
-                    <div className="p-2 rounded-lg bg-[#141822] text-zinc-400 group-hover:text-amber-400 border border-[#222836] group-hover:border-amber-500/30 transition-colors">
-                      <MapPin className="w-4 h-4" />
-                    </div>
+                  <div className="flex items-center gap-2.5">
+                    <MapPin className="w-4 h-4 text-zinc-500 group-hover:text-blue-400" />
                     <div>
-                      <p className="text-sm font-semibold text-white group-hover:text-amber-300 transition-colors">
+                      <p className="text-sm font-medium text-white group-hover:text-blue-300">
                         {loc.name}
                       </p>
                       <p className="text-xs text-zinc-400">
@@ -189,11 +270,43 @@ export const LocationSearchBar: React.FC<LocationSearchBarProps> = ({
                       </p>
                     </div>
                   </div>
+                  <span className="text-xs text-zinc-500 font-mono">
+                    {loc.latitude.toFixed(2)}°, {loc.longitude.toFixed(2)}°
+                  </span>
+                </button>
+              ))}
+            </div>
+          )}
 
-                  <div className="text-right text-[11px] font-mono text-zinc-500 group-hover:text-zinc-300">
-                    <p>{loc.latitude.toFixed(2)}°N</p>
-                    <p>{loc.longitude.toFixed(2)}°E</p>
+          {/* Recent Searches (when query is short and dropdown is open) */}
+          {!query && recentLocations.length > 0 && (
+            <div>
+              <div className="px-3 py-1.5 text-[11px] font-medium text-zinc-500 uppercase tracking-wider bg-[#11141a] flex items-center justify-between">
+                <span>Recent Locations</span>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setRecentLocations([]);
+                    localStorage.removeItem("skyguard_recent_locations");
+                  }}
+                  className="text-zinc-500 hover:text-zinc-300 text-[10px] lowercase"
+                >
+                  clear
+                </button>
+              </div>
+              {recentLocations.map((loc, idx) => (
+                <button
+                  key={`recent-${idx}`}
+                  onClick={() => handleSelect(loc)}
+                  className="w-full text-left px-3.5 py-2 flex items-center justify-between hover:bg-[#1f242c] transition-colors group text-xs text-zinc-300"
+                >
+                  <div className="flex items-center gap-2">
+                    <History className="w-3.5 h-3.5 text-zinc-500 group-hover:text-blue-400" />
+                    <span>{loc.formatted_label || loc.name}</span>
                   </div>
+                  <span className="text-[11px] text-zinc-500 font-mono">
+                    {loc.latitude.toFixed(2)}°, {loc.longitude.toFixed(2)}°
+                  </span>
                 </button>
               ))}
             </div>
