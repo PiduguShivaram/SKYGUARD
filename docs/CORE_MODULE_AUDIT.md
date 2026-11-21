@@ -34,9 +34,9 @@ Every module was evaluated strictly on functional code implementations, automate
 
 All test suites were executed on the local environment without mock fixtures leaking into live endpoints:
 
-1. **Backend Offline Unit & Security Suite:**
+1. **Backend Offline Unit, Security & Stress Suite:**
    - **Command:** `.\services\api\.venv\Scripts\python.exe -m pytest services/api/tests/ -v -m "not live"`
-   - **Result:** **31 passed, 8 deselected in 14.65s** (100% pass rate).
+   - **Result:** **38 passed, 8 deselected in 12.83s** (100% pass rate).
    - **Coverage Highlights:**
      - `test_strict_country_matching_prevents_substring_leaks`: PASSED
      - `test_parse_cap_polygon_coordinate_inversion_and_closure`: PASSED
@@ -47,6 +47,13 @@ All test suites were executed on the local environment without mock fixtures lea
      - `test_worker_key_authorization_on_dispatch_sync`: PASSED
      - `test_transient_failure_retry_and_dead_endpoint_deactivation`: PASSED
      - `test_alerthub_zero_keyword_severity_inference`: PASSED
+     - `test_stress_concurrent_health_and_local_queries`: PASSED (50 concurrent requests)
+     - `test_hardening_pathological_polygon_inputs`: PASSED (corrupt, self-intersecting, 360-vertex polygons)
+     - `test_hardening_pathological_circle_inputs`: PASSED
+     - `test_hardening_ssrf_malicious_endpoints`: PASSED (metadata, loopback, port-smuggling blocked)
+     - `test_hardening_farmer_engine_extreme_weather`: PASSED (50 randomized extreme boundary scenarios)
+     - `test_hardening_risk_engine_extreme_temperatures`: PASSED (deep freeze to 52°C heatwave)
+     - `test_hardening_strict_country_matching_fuzzy_rejections`: PASSED
 
 2. **Backend Live Upstream Integration Suite:**
    - **Command:** `.\services\api\.venv\Scripts\python.exe -m pytest services/api/tests/ -v -m "live"`
@@ -62,19 +69,19 @@ All test suites were executed on the local environment without mock fixtures lea
    - **Command:** `pnpm --filter web build`
    - **Result:** `next build` compiled cleanly (`Route /: 24.2 kB`, `Static prerender 4/4 pages`, 0 TypeScript/ESLint errors).
 
-4. **Playwright End-to-End Browser Automation Suite:**
-   - **Command:** `python tests/test_browser_e2e.py`
-   - **Result:** **All 13 user journeys passed without errors.**
-   - **Verified Visual UI Checkpoints:**
-     - Full initial unselected dashboard state and global alerts view.
-     - Geocoding and location chip selection (Warangal, Telangana, India).
-     - Explicit NWP model disclaimer: *"NWP Model-Estimated Current Conditions; not an in-situ physical station observation."*
-     - Live temperature, relative humidity, wind speed, apparent temperature, and SVG 24-hour temperature chart.
-     - Phase 3 Derived Risk Indicators with `EXPERIMENTAL` badge.
-     - Phase 4 Gated Farmer Mode panel with crop selection and growth stage calculator.
-     - Strict telemetry gating status: `DISCONNECTED` (Soil sensor), `GATED` (Satellite NDVI), `GATED` (Yield model).
-     - Push Notification Modal with VAPID consent, category toggles, and diagnostic test trigger.
-     - Detailed Alert Modal with raw CAP record viewer and local agency color code badges.
+4. **Dependency Vulnerability & Supply-Chain Audit:**
+   - **Command:** `.\services\api\.venv\Scripts\pip-audit.exe -r services/api/requirements.txt`
+   - **Result:** **No known vulnerabilities found** (100% clean across all 13 dependencies).
+   - **Frontend:** Upgraded Next.js to official security release `14.2.35`.
+
+5. **Playwright End-to-End Multi-Suite Browser Verification:**
+   - **Command:** `python -u tests/test_browser_e2e.py`
+   - **Result:** **All 5 Playwright E2E suites successfully passed:**
+     - `Suite 1 (Public Mode)`: Multi-location search, NWP model disclaimer, 24-hr SVG chart, Phase 3 derived risks.
+     - `Suite 2 (Farmer Mode)`: Crop selection (Cotton, Maize, Tomato), sowing date calculation, hardware gating (`DISCONNECTED`, `GATED`).
+     - `Suite 3 (Web Push)`: Modal activation, VAPID consent, country-wide emergency bulletins toggle, integrity notice.
+     - `Suite 4 (Worldwide Alerts)`: WMO SWIC / GDACS tab navigation, raw CAP advisory inspection, anti-fake "All Clear" assertion.
+     - `Suite 5 (Responsive Layout)`: Mobile (375x667) and Tablet (768x1024) layouts without horizontal overflow.
    - **Screenshots Preserved:**
      - `docs/screenshots/skyguard_public_mode_verified.png`
      - `docs/screenshots/skyguard_farmer_mode_verified.png`

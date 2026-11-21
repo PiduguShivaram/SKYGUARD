@@ -3,11 +3,12 @@
 > **A real-time public weather intelligence, worldwide disaster alert, and verified emergency warning platform with a strictly-gated Farmer Mode.**
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-[![FastAPI](https://img.shields.io/badge/FastAPI-0.115+-009688.svg?logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com)
-[![Next.js](https://img.shields.io/badge/Next.js-14.2+-black.svg?logo=next.js&logoColor=white)](https://nextjs.org)
-[![TypeScript](https://img.shields.io/badge/TypeScript-5.5+-3178C6.svg?logo=typescript&logoColor=white)](https://www.typescriptlang.org)
+[![FastAPI](https://img.shields.io/badge/FastAPI-0.128+-009688.svg?logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com)
+[![Next.js](https://img.shields.io/badge/Next.js-14.2.35-black.svg?logo=next.js&logoColor=white)](https://nextjs.org)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.6+-3178C6.svg?logo=typescript&logoColor=white)](https://www.typescriptlang.org)
 [![Python](https://img.shields.io/badge/Python-3.12+-3776AB.svg?logo=python&logoColor=white)](https://www.python.org)
-[![Playwright](https://img.shields.io/badge/Playwright-E2E%20Verified-45ba4b.svg?logo=playwright&logoColor=white)](https://playwright.dev)
+[![Playwright](https://img.shields.io/badge/Playwright-5%20Suites%20Verified-45ba4b.svg?logo=playwright&logoColor=white)](https://playwright.dev)
+[![Security](https://img.shields.io/badge/pip--audit-0%20vulnerabilities-brightgreen.svg)](docs/CORE_MODULE_AUDIT.md)
 
 ---
 
@@ -84,9 +85,9 @@ SkyGuard is built from the ground up on an **absolute zero-fabrication contract*
 
 ## 📸 Screenshots
 
-| Public Mode Forecast & Derived Risks | Gated Farmer Mode Agrometeorology |
-|---|---|
-| ![Public Mode](docs/screenshots/skyguard_public_mode_verified.png) | ![Farmer Mode](docs/screenshots/skyguard_farmer_mode_verified.png) |
+| Public Mode Forecast & Derived Risks | Gated Farmer Mode Agrometeorology | Web Push Notification Center |
+|---|---|---|
+| ![Public Mode](docs/screenshots/skyguard_public_mode_verified.png) | ![Farmer Mode](docs/screenshots/skyguard_farmer_mode_verified.png) | ![Push Center](docs/screenshots/skyguard_push_modal_verified.png) |
 
 ---
 
@@ -131,26 +132,34 @@ pnpm dev
 
 ## 🧪 Testing & Verification
 
-SkyGuard includes a multi-tier test matrix ensuring both offline calculation correctness and real live upstream provider health:
+SkyGuard includes an exhaustive multi-tier test matrix ensuring both offline calculation correctness, security hardening, and real live upstream provider health:
 
-### Run Pytest Test Suite
+### 1. Run Offline Pytest Suite (Unit, Security & Stress)
 ```bash
-# In services/api with virtualenv activated:
-pytest -v
+pytest services/api/tests/ -v -m "not live"
 ```
-*Executes all 19 unit and integration tests across schemas, risk engines, farmer logic, and live upstream providers.*
+*Executes all 38 offline tests covering schema validation, deterministic risk engine boundaries, ICAR farmer watches, Shapely Point-in-Polygon spatial matching, push endpoint SSRF blocking, possession token authentication, and concurrency stress testing.*
 
-### Run Live Upstream Smoke Verification
+### 2. Run Live Upstream Smoke Verification
 ```bash
-python scripts/check_live.py
+pytest services/api/tests/ -v -m "live"
 ```
-*Queries genuine live endpoints for Open-Meteo, GDACS, and WMO SWIC to verify connectivity, schema parsing, and latency.*
+*Executes 8 live integration tests querying genuine upstream endpoints for Open-Meteo, GDACS, WMO SWIC, and Alert-Hub.org.*
 
-### Run Playwright Browser E2E Test
+### 3. Run Dependency Vulnerability Audit
 ```bash
-python tests/test_browser_e2e.py
+pip-audit -r services/api/requirements.txt
 ```
-*Drives a headless browser through location search, weather rendering, derived risk analysis, farmer mode toggling, and data integrity invariant assertions.*
+*Scans all backend dependencies against PyPI and OSV databases (0 known vulnerabilities).*
+
+### 4. Run Playwright Browser E2E Test (5 Multi-Suites)
+```bash
+python -u tests/test_browser_e2e.py
+```
+*Executes 5 automated headless browser suites across Public Mode, Gated Farmer Mode, Web Push Center, Worldwide Alerts inspection, and Mobile/Tablet responsive viewports.*
+
+### 5. Full Technical Audit Report
+For detailed audit scores and line-by-line verification evidence, see [docs/CORE_MODULE_AUDIT.md](docs/CORE_MODULE_AUDIT.md).
 
 ---
 
@@ -167,6 +176,10 @@ python tests/test_browser_e2e.py
 | `/api/v1/alerts/alerthub` | GET | Aggregated international emergency CAP stream | Alert-Hub.org |
 | `/api/v1/risk/evaluate` | POST | Deterministic scientific weather risk heuristics | SkyGuard Risk Assessment Engine |
 | `/api/v1/farmer/watch` | POST | Crop-specific watches and hardware gating | ICAR Agromet Advisory Guidelines |
+| `/api/v1/push/vapid-public-key` | GET | Retrieve RFC 8292 NIST P-256 VAPID public key | SkyGuard VAPID Key Service |
+| `/api/v1/push/subscribe` | POST | Register or update Web Push subscription | Browser Push Service Gateway |
+| `/api/v1/push/test` | POST | Send diagnostic operational test notification | SkyGuard Diagnostics |
+| `/api/v1/push/dispatch-sync` | POST | Recurring sync worker alert matching & dispatch | Internal Worker (`X-Worker-Key`) |
 
 ---
 
