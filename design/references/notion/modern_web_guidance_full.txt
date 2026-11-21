@@ -1,0 +1,34 @@
+Skip to content
+You’re almost there — sign up to start building in Notion today.
+Sign up or login
+Modern Web Guidance: Setup Guide
+Modern Web Guidance: Setup Guide
+AI coding models learned from years of old code, so they keep writing old code. Modern Web Guidance is Google Chrome's free fix, built with the Firefox and Edge teams. It gives your coding agent 200+ expert-checked guides on performance, accessibility, security and more, right while it builds. This guide gets you set up in about 5 minutes.
+What this is
+Ask any AI agent to build a web page and it often reaches for outdated patterns. A whole JavaScript library for an animation CSS can now do natively. Deeply nested divs for a dropdown that modern CSS handles in a line or two.
+What AI defaults to vs what modern browsers can already do
+Modern Web Guidance is a set of skills you install into your agent. Based on what you ask it to build, it quietly pulls the right short guide into the agent's context, so the code it writes uses current, cross-browser best practices.
+200+ guides covering performance, styling, accessibility, security, privacy, forms and more
+Every guide is reviewed by a domain expert and tested
+Cross-browser by default: built with Chrome, Firefox and Edge, with browser compatibility data and fallbacks baked in
+Version 1.0 is stable as of November 2026
+Free, works regardless of which model you use
+The problem
+Google's team says frontier models fail around half of their modern web checks.
+The results
+One team cut UI bugs by over 90%. Another went from 61% to 94% on the checks.
+Results from teams using it, via Google's launch recap
+Before you start
+Node.js installed (it comes with npx)
+A coding agent. Supported: Claude Code, Codex, Cursor, Antigravity, Copilot, WebStorm, Kimi Code and Grok Build
+A project folder you want your agent to work in
+Step 1: Install it
+The full setup, in two commands
+Open your terminal, go to your project folder, and run:
+npx modern-web-guidance@latest install
+
+​
+That's it. Your agent now has the guides available.
+Installed an earlier preview? Update to 1.0 with:
+npx modern-web-guidance@latest update
+Prefer plugins? It's also available through the plugin marketplaces of the supported agents. Check the GitHub repo for the method that fits your setup.

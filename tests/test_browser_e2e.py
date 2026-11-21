@@ -29,7 +29,7 @@ async def test_playwright_public_mode_multi_location(page: Page = None):
         should_close = True
 
     try:
-        await page.goto("http://localhost:3000", wait_until="networkidle")
+        await page.goto("http://localhost:3000/classic", wait_until="networkidle")
         title = await page.title()
         assert "SkyGuard" in title
 
@@ -83,7 +83,7 @@ async def test_playwright_farmer_mode_crop_stress(page: Page = None):
         context = await browser.new_context(viewport={"width": 1280, "height": 900})
         page = await context.new_page()
         should_close = True
-        await page.goto("http://localhost:3000", wait_until="networkidle")
+        await page.goto("http://localhost:3000/classic", wait_until="networkidle")
         await page.wait_for_selector("text=Select a location to view local forecasts", timeout=15000)
         await page.wait_for_timeout(1000)
         warangal_btn = page.locator("button:has-text('Warangal')")
@@ -137,7 +137,7 @@ async def test_playwright_push_notification_settings(page: Page = None):
         context = await browser.new_context(viewport={"width": 1280, "height": 900})
         page = await context.new_page()
         should_close = True
-        await page.goto("http://localhost:3000", wait_until="networkidle")
+        await page.goto("http://localhost:3000/classic", wait_until="networkidle")
         await page.wait_for_timeout(1000)
 
     try:
@@ -183,7 +183,7 @@ async def test_playwright_global_alerts_and_modal_inspection(page: Page = None):
         context = await browser.new_context(viewport={"width": 1280, "height": 900})
         page = await context.new_page()
         should_close = True
-        await page.goto("http://localhost:3000", wait_until="networkidle")
+        await page.goto("http://localhost:3000/classic", wait_until="networkidle")
 
     try:
         # If in Farmer Mode, switch back to Public Mode so alerts panel is prominent
@@ -251,7 +251,7 @@ async def test_playwright_mobile_responsive_layout():
         for filename, width, height in viewports:
             ctx = await browser.new_context(viewport={"width": width, "height": height})
             vp_page = await ctx.new_page()
-            await vp_page.goto("http://localhost:3000", wait_until="networkidle")
+            await vp_page.goto("http://localhost:3000/classic", wait_until="networkidle")
 
             # Check branding and alerts visibility
             assert await vp_page.locator("text=SkyGuard").first.is_visible()

@@ -30,3 +30,14 @@ Thumbs.db
 *.sqlite
 *.sqlite3
 *.pem
+
+# Screenshots & Media Captures
+screenshots/
+docs/screenshots/
+design/references/screenshots/
+*.png
+*.jpg
+*.jpeg
+*.mp4
+*.webp
+
