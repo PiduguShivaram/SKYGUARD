@@ -292,12 +292,12 @@ export const NotificationSettingsModal: React.FC<NotificationSettingsModalProps>
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-fadeIn">
-      <div className="bg-slate-900 border border-slate-700/80 rounded-2xl max-w-lg w-full p-6 shadow-2xl space-y-5 max-h-[90vh] overflow-y-auto">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-fadeIn">
+      <div className="bg-gradient-to-b from-[#0e1628] to-[#080d1a] border border-white/[0.12] rounded-3xl max-w-lg w-full p-6 sm:p-7 shadow-2xl space-y-5 max-h-[90vh] overflow-y-auto">
         {/* Header */}
-        <div className="flex items-center justify-between pb-4 border-b border-slate-800">
-          <div className="flex items-center gap-2.5">
-            <div className="p-2 bg-blue-600/20 text-blue-400 rounded-xl border border-blue-500/30">
+        <div className="flex items-center justify-between pb-4 border-b border-white/[0.08]">
+          <div className="flex items-center gap-3">
+            <div className="p-2.5 bg-sky-500/15 text-sky-400 rounded-2xl border border-sky-500/30 shadow-[0_0_12px_rgba(14,165,233,0.3)]">
               <Bell className="w-5 h-5" />
             </div>
             <div>
@@ -311,23 +311,23 @@ export const NotificationSettingsModal: React.FC<NotificationSettingsModalProps>
           </div>
           <button
             onClick={onClose}
-            className="p-1.5 text-slate-400 hover:text-white rounded-lg hover:bg-slate-800 transition-colors"
+            className="p-2 text-slate-400 hover:text-white rounded-xl hover:bg-white/[0.06] transition-colors"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
 
         {/* Permission & Status Bar */}
-        <div className="p-3.5 rounded-xl bg-slate-850 border border-slate-800 flex items-center justify-between">
+        <div className="p-4 rounded-2xl bg-[#060a14] border border-white/[0.08] flex items-center justify-between shadow-inner">
           <div>
-            <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">
+            <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider font-mono">
               Browser Permission
             </span>
-            <div className="flex items-center gap-1.5 mt-0.5">
+            <div className="flex items-center gap-2 mt-0.5">
               <span
                 className={`w-2 h-2 rounded-full ${
                   permission === "granted"
-                    ? "bg-emerald-400"
+                    ? "bg-emerald-400 shadow-[0_0_6px_#10B981]"
                     : permission === "denied"
                     ? "bg-rose-400"
                     : "bg-amber-400"
@@ -335,7 +335,7 @@ export const NotificationSettingsModal: React.FC<NotificationSettingsModalProps>
               />
               <span className="text-xs font-bold text-white capitalize">{permission}</span>
               {isSubscribed && (
-                <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 ml-1">
+                <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 ml-1">
                   DEVICE ACTIVE
                 </span>
               )}
@@ -346,7 +346,7 @@ export const NotificationSettingsModal: React.FC<NotificationSettingsModalProps>
             <button
               onClick={handleEnableNotifications}
               disabled={loading || permission === "denied"}
-              className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white rounded-xl text-xs font-semibold shadow-sm transition-all"
+              className="flex items-center gap-1.5 px-3.5 py-2 bg-gradient-to-r from-sky-600 to-sky-500 hover:from-sky-500 hover:to-sky-400 disabled:opacity-50 text-white rounded-xl text-xs font-semibold shadow-md transition-all active:scale-95"
             >
               <Bell className="w-3.5 h-3.5" />
               <span>Enable Notifications</span>
@@ -355,7 +355,7 @@ export const NotificationSettingsModal: React.FC<NotificationSettingsModalProps>
             <button
               onClick={handleUnsubscribe}
               disabled={loading}
-              className="flex items-center gap-1.5 px-3 py-1.5 bg-rose-600/20 hover:bg-rose-600/30 text-rose-300 border border-rose-500/30 rounded-xl text-xs font-semibold transition-all"
+              className="flex items-center gap-1.5 px-3.5 py-2 bg-rose-500/20 hover:bg-rose-500/30 text-rose-300 border border-rose-500/30 rounded-xl text-xs font-semibold transition-all active:scale-95"
             >
               <BellOff className="w-3.5 h-3.5" />
               <span>Disable</span>

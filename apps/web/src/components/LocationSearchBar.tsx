@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useRef } from "react";
-import { Search, MapPin, Loader2, AlertCircle, Compass } from "lucide-react";
+import { Search, MapPin, Loader2, AlertCircle, Compass, X } from "lucide-react";
 import { searchLocations } from "@/lib/api";
 import { LocationSearchResult } from "@/types";
 
@@ -21,6 +21,7 @@ export const LocationSearchBar: React.FC<LocationSearchBarProps> = ({
   const [searchError, setSearchError] = useState<string | null>(null);
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
 
   // Debounced search against real Open-Meteo Geocoding
   useEffect(() => {
@@ -49,7 +50,7 @@ export const LocationSearchBar: React.FC<LocationSearchBarProps> = ({
       } finally {
         setLoading(false);
       }
-    }, 350);
+    }, 300);
 
     return () => clearTimeout(timer);
   }, [query]);
@@ -71,89 +72,135 @@ export const LocationSearchBar: React.FC<LocationSearchBarProps> = ({
     setIsOpen(false);
   };
 
+  const handleClear = () => {
+    setQuery("");
+    setResults([]);
+    setIsOpen(false);
+    inputRef.current?.focus();
+  };
+
   return (
     <div className="w-full relative" ref={dropdownRef}>
-      <label htmlFor="location-search" className="block text-xs font-semibold text-slate-300 mb-1.5">
-        Search Location (City, Town, or District)
-      </label>
-      <div className="relative">
-        <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+      <div className="flex items-center justify-between mb-2">
+        <label htmlFor="location-search" className="block text-xs font-semibold tracking-wider uppercase text-slate-400">
+          Search Location (City, Town, or District)
+        </label>
+        {selectedLocation && (
+          <span className="text-[11px] font-mono text-sky-400 flex items-center gap-1">
+            <Compass className="w-3 h-3 text-sky-400" />
+            {selectedLocation.latitude.toFixed(2)}°N, {selectedLocation.longitude.toFixed(2)}°E
+          </span>
+        )}
+      </div>
+
+      <div className="relative group">
+        <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400 group-focus-within:text-sky-400 transition-colors">
           {loading ? (
-            <Loader2 className="w-4 h-4 animate-spin text-blue-400" />
+            <Loader2 className="w-4 h-4 animate-spin text-sky-400" />
           ) : (
             <Search className="w-4 h-4" />
           )}
         </div>
+
         <input
+          ref={inputRef}
           id="location-search"
           type="text"
-          className="w-full pl-10 pr-4 py-3 bg-slate-800/90 border border-slate-700 rounded-xl text-sm text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all shadow-inner"
+          className="w-full pl-10 pr-24 py-3 bg-[#0c1220]/90 border border-white/[0.1] rounded-xl text-sm text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-sky-500/50 focus:border-sky-500/60 transition-all shadow-inner backdrop-blur-md"
           placeholder={
             selectedLocation
               ? `Current location: ${selectedLocation.formatted_label}`
-              : "Type at least 2 characters (e.g. Warangal, Hyderabad, Delhi)..."
+              : "Type at least 2 characters (e.g. Warangal, Tokyo, London, Delhi)..."
           }
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           onFocus={() => (results.length > 0 || hasSearched || searchError) && setIsOpen(true)}
           autoComplete="off"
         />
+
+        <div className="absolute inset-y-0 right-0 pr-3 flex items-center gap-1.5">
+          {query && (
+            <button
+              type="button"
+              onClick={handleClear}
+              className="p-1 text-slate-400 hover:text-white rounded-lg hover:bg-white/[0.06] transition-colors"
+              title="Clear search"
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
+          )}
+          <span className="hidden sm:inline-block text-[10px] font-mono font-medium text-slate-500 bg-white/[0.04] border border-white/[0.08] px-1.5 py-0.5 rounded">
+            /
+          </span>
+        </div>
       </div>
 
-      {/* Autocomplete / Results Dropdown */}
+      {/* Autocomplete Dropdown */}
       {isOpen && (
-        <div className="absolute top-full left-0 right-0 mt-1.5 z-50 bg-slate-800 border border-slate-700 rounded-xl shadow-2xl overflow-hidden max-h-80 overflow-y-auto">
-          {/* Header */}
-          <div className="px-3 py-2 text-[11px] font-semibold text-slate-400 border-b border-slate-700/60 uppercase tracking-wider flex items-center justify-between">
-            <span>Matching Places (Open-Meteo Geocoding)</span>
-            {loading && <span className="text-blue-400 normal-case font-normal">Searching...</span>}
-          </div>
-
-          {/* Loading state inside dropdown */}
-          {loading && results.length === 0 && (
-            <div className="p-4 text-center text-xs text-slate-400 flex items-center justify-center gap-2">
-              <Loader2 className="w-4 h-4 animate-spin text-blue-400" />
-              <span>Querying Open-Meteo gazetteer...</span>
+        <div className="absolute left-0 right-0 mt-2 z-50 rounded-2xl bg-[#090f1d]/95 border border-white/[0.12] shadow-2xl backdrop-blur-2xl overflow-hidden divide-y divide-white/[0.06] animate-in fade-in-50 slide-in-from-top-2 duration-150">
+          {loading && (
+            <div className="p-4 flex items-center justify-center gap-2 text-xs text-slate-400 font-medium">
+              <Loader2 className="w-4 h-4 animate-spin text-sky-400" />
+              <span>Querying Open-Meteo Global Geocoding API...</span>
             </div>
           )}
 
-          {/* Error State */}
           {searchError && (
-            <div className="p-4 text-xs text-rose-300 bg-rose-950/20 flex items-center gap-2">
-              <AlertCircle className="w-4 h-4 text-rose-400 shrink-0" />
-              <span>Geocoding unavailable: {searchError}</span>
+            <div className="p-4 flex items-start gap-2.5 text-xs text-rose-300 bg-rose-950/30">
+              <AlertCircle className="w-4 h-4 text-rose-400 shrink-0 mt-0.5" />
+              <div>
+                <p className="font-semibold text-rose-200">Geocoding Search Error</p>
+                <p className="text-rose-400 text-[11px]">{searchError}</p>
+              </div>
             </div>
           )}
 
-          {/* No match state */}
-          {!loading && !searchError && hasSearched && results.length === 0 && (
-            <div className="p-5 text-center text-xs text-slate-400">
-              <p className="font-medium text-slate-300">No matching locations found for &quot;{query}&quot;</p>
-              <p className="text-[11px] text-slate-500 mt-1">
-                Please check the spelling or search for a nearby major town or district.
+          {!loading && !searchError && results.length === 0 && hasSearched && (
+            <div className="p-6 text-center text-xs text-slate-400 space-y-1">
+              <p className="font-semibold text-slate-300">No matching locations found</p>
+              <p className="text-[11px] text-slate-500">
+                Check spelling or try a broader district, major town, or country name.
               </p>
             </div>
           )}
 
-          {/* Multiple Geo Results List */}
-          {!loading &&
-            results.map((item) => (
-              <button
-                key={`${item.id}-${item.latitude}-${item.longitude}`}
-                onClick={() => handleSelect(item)}
-                className="w-full px-4 py-3 text-left flex items-start gap-3 hover:bg-slate-700/70 border-b border-slate-700/30 last:border-0 transition-colors focus:bg-slate-700/80 focus:outline-none"
-              >
-                <MapPin className="w-4 h-4 text-blue-400 shrink-0 mt-0.5" />
-                <div className="flex-1">
-                  <p className="text-sm font-semibold text-white">{item.formatted_label}</p>
-                  <p className="text-xs text-slate-400 font-mono mt-0.5">
-                    Exact coordinates: {item.latitude.toFixed(4)}°N, {item.longitude.toFixed(4)}°E
-                    {item.elevation !== undefined && item.elevation !== null ? ` · Elevation: ${item.elevation}m` : ""}
-                    {item.country_code ? ` · Country: ${item.country_code}` : ""}
-                  </p>
-                </div>
-              </button>
-            ))}
+          {!loading && results.length > 0 && (
+            <div className="max-h-72 overflow-y-auto py-1">
+              {results.map((loc) => (
+                <button
+                  key={`${loc.id}-${loc.latitude}-${loc.longitude}`}
+                  type="button"
+                  onClick={() => handleSelect(loc)}
+                  className="w-full px-4 py-3 text-left flex items-center justify-between gap-3 hover:bg-sky-500/10 hover:text-sky-200 transition-colors group focus:outline-none focus:bg-sky-500/15"
+                >
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div className="p-2 rounded-lg bg-white/[0.04] border border-white/[0.06] text-slate-400 group-hover:text-sky-400 group-hover:border-sky-500/30 transition-colors">
+                      <MapPin className="w-4 h-4" />
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-sm font-semibold text-white group-hover:text-sky-100 truncate">
+                        {loc.name}
+                      </p>
+                      <p className="text-xs text-slate-400 truncate font-normal">
+                        {loc.formatted_label}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2 shrink-0 text-right">
+                    <span className="text-[10px] font-mono text-slate-500">
+                      {loc.latitude.toFixed(2)}°, {loc.longitude.toFixed(2)}°
+                    </span>
+                    {loc.country_code && (
+                      <span className="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-white/[0.06] text-slate-300 border border-white/[0.1] group-hover:bg-sky-500/20 group-hover:text-sky-200">
+                        {loc.country_code}
+                      </span>
+                    )}
+                  </div>
+                </button>
+              ))}
+            </div>
+          )}
         </div>
       )}
     </div>

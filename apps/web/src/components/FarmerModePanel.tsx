@@ -11,6 +11,9 @@ import {
   Info,
   CheckCircle,
   ExternalLink,
+  ShieldCheck,
+  Radio,
+  Layers,
 } from "lucide-react";
 import { DailyForecastPoint, FarmerWatchResponse } from "@/types";
 import { getFarmerWatches } from "@/lib/api";
@@ -60,10 +63,10 @@ export const FarmerModePanel: React.FC<FarmerModePanelProps> = ({ daily }) => {
   return (
     <div className="space-y-6">
       {/* Crop Setup Bar */}
-      <div className="rounded-2xl bg-gradient-to-br from-emerald-950/40 via-slate-850 to-slate-900 border border-emerald-500/30 p-6 shadow-xl">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-700/60">
-          <div className="flex items-center gap-3">
-            <div className="p-2.5 rounded-xl bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+      <div className="rounded-3xl bg-gradient-to-br from-[#0a1815] via-[#08121a] to-[#070b14] border border-emerald-500/30 p-6 sm:p-7 shadow-2xl backdrop-blur-xl">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-5 border-b border-emerald-500/20">
+          <div className="flex items-center gap-3.5">
+            <div className="p-3 rounded-2xl bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 shadow-[0_0_15px_-3px_rgba(16,185,129,0.3)]">
               <Sprout className="w-6 h-6" />
             </div>
             <div>
@@ -81,166 +84,179 @@ export const FarmerModePanel: React.FC<FarmerModePanelProps> = ({ daily }) => {
               href="https://icar.org.in"
               target="_blank"
               rel="noopener noreferrer"
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-xs font-medium text-emerald-400 hover:text-emerald-300 transition-colors"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/[0.04] hover:bg-emerald-500/15 border border-white/[0.08] hover:border-emerald-500/30 text-xs font-mono font-medium text-emerald-300 hover:text-emerald-200 transition-colors"
               title="Indian Council of Agricultural Research - Agrometeorological Guidelines"
             >
               <span>ICAR-AICRPAM / FAO Framework</span>
-              <ExternalLink className="w-3 h-3" />
+              <ExternalLink className="w-3.5 h-3.5" />
             </a>
           </div>
         </div>
 
         {/* Form Inputs */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-5">
           <div>
-            <label className="block text-xs font-semibold text-slate-300 mb-1.5">
+            <label className="block text-xs font-semibold tracking-wider uppercase text-slate-300 mb-1.5">
               Select Standing Crop
             </label>
             <select
               value={selectedCrop}
               onChange={(e) => setSelectedCrop(e.target.value)}
-              className="w-full px-3.5 py-2.5 bg-slate-800 border border-slate-700 rounded-xl text-sm text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
+              className="w-full bg-[#060a14] border border-white/[0.1] rounded-xl px-3.5 py-2.5 text-sm text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500/60 transition-all font-medium"
             >
-              {CROPS.map((c) => (
-                <option key={c} value={c}>
-                  {c}
+              {CROPS.map((crop) => (
+                <option key={crop} value={crop} className="bg-slate-900 text-white">
+                  {crop}
                 </option>
               ))}
             </select>
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-slate-300 mb-1.5">
-              Approximate Sowing Date (Optional)
+            <label className="block text-xs font-semibold tracking-wider uppercase text-slate-300 mb-1.5">
+              Sowing Date (Optional Stage Tracking)
             </label>
             <input
               type="date"
               value={sowingDate}
               onChange={(e) => setSowingDate(e.target.value)}
-              className="w-full px-3.5 py-2.5 bg-slate-800 border border-slate-700 rounded-xl text-sm text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
+              className="w-full bg-[#060a14] border border-white/[0.1] rounded-xl px-3.5 py-2.5 text-sm text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500/60 transition-all font-mono"
             />
-            {farmerData?.days_since_sowing !== null && farmerData?.days_since_sowing !== undefined && (
-              <p className="text-[11px] text-emerald-400 mt-1">
-                Estimated age: {farmerData.days_since_sowing} days since sowing
-              </p>
-            )}
           </div>
         </div>
+
+        {/* Calculated Stage Output */}
+        {farmerData?.days_since_sowing !== undefined && farmerData.days_since_sowing !== null && (
+          <div className="mt-4 p-3.5 rounded-2xl bg-emerald-950/30 border border-emerald-500/30 flex items-center justify-between text-xs">
+            <span className="text-emerald-300 font-medium">
+              Calculated Growth Window: <strong>{farmerData.days_since_sowing} days since sowing</strong>
+            </span>
+            <span className="text-[11px] font-mono text-emerald-400 bg-emerald-500/20 px-2 py-0.5 rounded-full border border-emerald-500/30">
+              Active Monitoring
+            </span>
+          </div>
+        )}
       </div>
 
-      {/* Operational Weather Watches */}
-      <div className="rounded-2xl bg-slate-800/80 border border-slate-700 p-6 shadow-xl">
-        <h4 className="text-base font-bold text-white mb-1 flex items-center gap-2">
-          <span>Field Agromet Watches for {selectedCrop}</span>
-        </h4>
-        <p className="text-xs text-slate-400 mb-4">
-          Heuristic operational rules based on ICAR-AICRPAM advisory guidelines &amp; 7-day numerical forecasts
-        </p>
+      {/* Field Agromet Watches Section */}
+      <div className="rounded-3xl bg-gradient-to-br from-[#0c1322] via-[#0a101d] to-[#070b14] border border-white/[0.08] p-6 sm:p-7 shadow-2xl backdrop-blur-xl space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-4 border-b border-white/[0.08]">
+          <div>
+            <h4 className="text-base font-bold text-white tracking-tight">
+              Field Agromet Watches for {selectedCrop}
+            </h4>
+            <p className="text-xs text-slate-400">
+              Evaluated against 7-day numerical forecast parameters
+            </p>
+          </div>
+          <span className="text-[11px] font-mono text-slate-400 bg-white/[0.04] px-2.5 py-1 rounded-full border border-white/[0.08]">
+            {farmerData?.watches?.length || 0} Advisories
+          </span>
+        </div>
 
         {loading ? (
-          <div className="p-4 bg-slate-900 rounded-xl animate-pulse text-xs text-slate-400">
-            Evaluating crop weather watches...
+          <div className="p-8 text-center text-xs text-slate-400 animate-pulse">
+            Evaluating field moisture balance and thermal stress thresholds...
           </div>
-        ) : farmerData && farmerData.watches.length > 0 ? (
+        ) : farmerData?.watches && farmerData.watches.length > 0 ? (
           <div className="space-y-3">
-            {farmerData.watches.map((watch, idx) => (
+            {farmerData.watches.map((w, idx) => (
               <div
                 key={idx}
-                className="p-4 rounded-xl border border-emerald-500/30 bg-emerald-950/20 text-slate-200"
+                className={`p-4 rounded-2xl border transition-all ${
+                  w.severity === "High"
+                    ? "bg-rose-950/20 border-rose-500/30"
+                    : "bg-amber-950/20 border-amber-500/30"
+                }`}
               >
-                <div className="flex items-center justify-between gap-2">
-                  <span className="text-xs font-bold px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/40">
-                    {watch.category}
+                <div className="flex items-start justify-between gap-3">
+                  <div className="space-y-1">
+                    <h5 className="text-sm font-bold text-white flex items-center gap-2">
+                      <AlertCircle className={`w-4 h-4 ${w.severity === "High" ? "text-rose-400" : "text-amber-400"}`} />
+                      {w.category}
+                    </h5>
+                    <p className="text-xs text-slate-300 leading-relaxed">{w.observation}</p>
+                    <p className="text-xs text-emerald-300 font-medium mt-1 leading-relaxed">{w.action}</p>
+                  </div>
+                  <span
+                    className={`text-xs font-mono font-bold px-2 py-0.5 rounded-full shrink-0 ${
+                      w.severity === "High"
+                        ? "bg-rose-500/20 text-rose-300 border border-rose-500/30"
+                        : "bg-amber-500/20 text-amber-300 border border-amber-500/30"
+                    }`}
+                  >
+                    {w.severity}
                   </span>
-                  <span className="text-xs text-slate-400">Reference: {watch.date}</span>
                 </div>
-                <p className="text-xs text-slate-300 mt-2 font-medium">
-                  <strong>Forecast Condition:</strong> {watch.observation}
-                </p>
-                <div className="mt-2 p-2.5 bg-slate-900/80 rounded-lg text-xs text-emerald-300 border border-slate-800">
-                  <strong>Suggested Precaution:</strong> {watch.action}
-                </div>
-                <p className="text-[11px] text-slate-500 mt-2">
-                  <strong>Agronomic Basis:</strong> {watch.scientific_rationale}
-                </p>
               </div>
             ))}
           </div>
         ) : (
-          <div className="p-4 rounded-xl bg-slate-900/50 border border-slate-700/60 flex items-start gap-3">
-            <CheckCircle className="w-5 h-5 text-emerald-400 shrink-0 mt-0.5" />
-            <div>
-              <p className="text-sm font-semibold text-white">No Forecast-Threshold Triggers Detected</p>
-              <p className="text-xs text-slate-400 mt-0.5 leading-relaxed">
-                Standard 7-day numerical forecast parameters do not breach preset heuristic thresholds for extreme dry spells (&lt;5mm rain &amp; &ge;34&deg;C), excessive inundation (&ge;35mm/day), or severe canopy heat (&ge;39&deg;C). This does <strong>NOT</strong> guarantee absence of crop disease, sub-surface moisture deficit, localized frost, or pest infestation.
-              </p>
-            </div>
+          <div className="p-6 rounded-2xl bg-[#060a14]/60 border border-white/[0.06] text-center space-y-1.5">
+            <CheckCircle className="w-5 h-5 text-emerald-400 mx-auto" />
+            <p className="text-xs font-semibold text-slate-200">
+              No Forecast-Threshold Triggers Detected
+            </p>
+            <p className="text-[11px] text-slate-500 max-w-md mx-auto">
+              Rainfall, temperature, and wind extremes in the current 7-day model window do not violate {selectedCrop} physiological thresholds.
+            </p>
           </div>
         )}
-
-        {/* Scientific Applicability Notice */}
-        <div className="mt-4 p-3 rounded-xl bg-slate-900/40 border border-slate-800 text-[11px] text-slate-400 leading-relaxed flex items-start gap-2">
-          <Info className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
-          <div>
-            <strong className="text-slate-300">Agroclimatic Applicability Limitation:</strong> Operational watches use ICAR-AICRPAM guidelines calibrated primarily for tropical and subtropical agroclimatic zones. Soil moisture retention, terrain slope, cultivar genetics, and microclimates vary. These forecast heuristics must be verified against district agricultural extension advisories and physical soil checks.
-          </div>
-        </div>
       </div>
 
-      {/* Telemetry & Satellite Gating Notice */}
-      <div className="rounded-2xl bg-slate-900/90 border border-amber-500/30 p-6 shadow-xl">
-        <div className="flex items-center gap-2.5 pb-3 border-b border-slate-800">
-          <AlertCircle className="w-5 h-5 text-amber-400" />
-          <h4 className="text-sm font-bold text-white">
-            Sensor Telemetry &amp; Satellite Gating (Data Integrity Guarantee)
-          </h4>
+      {/* Hardware Gating Invariant Cards */}
+      <div className="rounded-3xl bg-gradient-to-br from-[#0c1322] via-[#0a101d] to-[#070b14] border border-white/[0.08] p-6 sm:p-7 shadow-2xl backdrop-blur-xl space-y-4">
+        <div className="flex items-center gap-2.5 pb-4 border-b border-white/[0.08]">
+          <Cpu className="w-5 h-5 text-amber-400" />
+          <div>
+            <h4 className="text-base font-bold text-white tracking-tight">
+              In-Situ Telemetry &amp; Satellite Index Status
+            </h4>
+            <p className="text-xs text-slate-400">
+              Strict hardware gating invariant: uncalibrated sensors or simulated indices are never displayed as real
+            </p>
+          </div>
         </div>
 
-        <p className="text-xs text-slate-300 mt-3 leading-relaxed">
-          In strict accordance with SkyGuard data integrity rules, advanced features requiring in-situ field telemetry or calibrated Earth Observation models remain <strong>disabled</strong> until genuine hardware or authentication is connected:
-        </p>
-
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-4">
-          {/* Soil Moisture */}
-          <div className="p-3 bg-slate-800/80 rounded-xl border border-slate-700">
-            <div className="flex items-center justify-between mb-2">
-              <Cpu className="w-4 h-4 text-slate-400" />
-              <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-rose-500/20 text-rose-300 border border-rose-500/30">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {/* Card 1: Soil Moisture IoT Sensors */}
+          <div className="p-4 rounded-2xl bg-[#060a14] border border-white/[0.08] space-y-3">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-bold text-white flex items-center gap-2">
+                <Radio className="w-4 h-4 text-slate-400" />
+                Physical Soil Moisture Sensors
+              </span>
+              <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-full bg-slate-800 text-slate-400 border border-slate-700">
                 DISCONNECTED
               </span>
             </div>
-            <p className="text-xs font-bold text-white">In-Situ Soil Moisture</p>
-            <p className="text-[11px] text-slate-400 mt-1">
-              Capacitive FDR/TDR soil sensors not detected. Root-zone water tension is unmeasured.
+            <p className="text-xs text-slate-400 leading-relaxed">
+              No calibrated field telemetry device connected. Root-zone soil moisture is gated to prevent fabricated agronomic advice.
             </p>
+            <div className="pt-2 border-t border-white/[0.06] flex items-center justify-between text-[11px] font-mono text-slate-500">
+              <span>Hardware Link: Inactive</span>
+              <span className="text-amber-400 font-bold">GATED</span>
+            </div>
           </div>
 
-          {/* Satellite NDVI */}
-          <div className="p-3 bg-slate-800/80 rounded-xl border border-slate-700">
-            <div className="flex items-center justify-between mb-2">
-              <Satellite className="w-4 h-4 text-slate-400" />
-              <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/30">
+          {/* Card 2: Sentinel-2 Multispectral Indices */}
+          <div className="p-4 rounded-2xl bg-[#060a14] border border-white/[0.08] space-y-3">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-bold text-white flex items-center gap-2">
+                <Satellite className="w-4 h-4 text-slate-400" />
+                Copernicus Sentinel-2 NDVI / EVI
+              </span>
+              <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-full bg-slate-800 text-slate-400 border border-slate-700">
                 GATED
               </span>
             </div>
-            <p className="text-xs font-bold text-white">Sentinel-2 Multi-Spectral</p>
-            <p className="text-[11px] text-slate-400 mt-1">
-              Google Earth Engine service account is not provisioned. 10m NDVI anomaly map disabled.
+            <p className="text-xs text-slate-400 leading-relaxed">
+              Cloud-penetrating radar and multispectral satellite vegetative indices require field parcel boundary registration and cloud mask validation.
             </p>
-          </div>
-
-          {/* Yield Loss Model */}
-          <div className="p-3 bg-slate-800/80 rounded-xl border border-slate-700">
-            <div className="flex items-center justify-between mb-2">
-              <TrendingDown className="w-4 h-4 text-slate-400" />
-              <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/30">
-                GATED
-              </span>
+            <div className="pt-2 border-t border-white/[0.06] flex items-center justify-between text-[11px] font-mono text-slate-500">
+              <span>EO Orbit Sync: Uncalibrated</span>
+              <span className="text-amber-400 font-bold">GATED</span>
             </div>
-            <p className="text-xs font-bold text-white">Plot Yield Loss Predictor</p>
-            <p className="text-[11px] text-slate-400 mt-1">
-              Calibrated crop growth models (APSIM/DSSAT) require on-field ground truth. No synthetic predictions.
-            </p>
           </div>
         </div>
       </div>

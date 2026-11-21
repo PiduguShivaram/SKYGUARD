@@ -74,38 +74,38 @@ export const AlertDetailModal: React.FC<AlertDetailModalProps> = ({
       alert.description.trim().toLowerCase() === alert.event.trim().toLowerCase());
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-fadeIn">
-      <div className="bg-slate-900 border border-slate-700/80 rounded-2xl max-w-xl w-full p-6 shadow-2xl space-y-5 max-h-[90vh] overflow-y-auto">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-fadeIn">
+      <div className="bg-gradient-to-b from-[#0e1628] to-[#080d1a] border border-white/[0.12] rounded-3xl max-w-xl w-full p-6 sm:p-7 shadow-2xl space-y-5 max-h-[90vh] overflow-y-auto">
         {/* Header */}
-        <div className="flex items-start justify-between gap-4 pb-4 border-b border-slate-800">
+        <div className="flex items-start justify-between gap-4 pb-4 border-b border-white/[0.08]">
           <div className="flex items-start gap-3">
-            <div className="p-2.5 bg-rose-500/10 text-rose-400 rounded-xl border border-rose-500/20 mt-0.5">
+            <div className="p-2.5 bg-rose-500/15 text-rose-400 rounded-2xl border border-rose-500/30 mt-0.5 shadow-[0_0_12px_rgba(244,63,94,0.3)]">
               <ShieldAlert className="w-5 h-5" />
             </div>
             <div>
               <div className="flex items-center gap-2 flex-wrap">
-                <span className={`text-[11px] font-bold px-2 py-0.5 rounded border ${alert ? getSeverityBadgeClass(alert.severity) : ""}`}>
+                <span className={`text-[11px] font-mono font-bold px-2 py-0.5 rounded-full border ${alert ? getSeverityBadgeClass(alert.severity) : ""}`}>
                   {alert?.severity || "Active Alert"}
                 </span>
 
                 {alert?.local_color_code && (
-                  <span className="text-[11px] font-bold px-2 py-0.5 rounded border bg-amber-500/20 text-amber-300 border-amber-500/30">
+                  <span className="text-[11px] font-mono font-bold px-2 py-0.5 rounded-full border bg-amber-500/20 text-amber-300 border-amber-500/30">
                     {alert.local_color_code}
                   </span>
                 )}
 
                 {alert?.msg_type === "Cancel" && (
-                  <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-rose-500/20 text-rose-300 border border-rose-500/40">
+                  <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-full bg-rose-500/20 text-rose-300 border border-rose-500/40">
                     CANCELLED
                   </span>
                 )}
 
-                <span className="text-[11px] font-mono text-slate-400 bg-slate-850 px-2 py-0.5 rounded border border-slate-800">
+                <span className="text-[11px] font-medium text-slate-400 bg-white/[0.04] px-2 py-0.5 rounded-md border border-white/[0.08]">
                   {alert?.source_provider || "Authoritative Provider"}
                 </span>
 
                 {alert?.language && (
-                  <span className="text-[10px] font-mono uppercase text-slate-400 bg-slate-900 px-1.5 py-0.5 rounded border border-slate-800">
+                  <span className="text-[10px] font-mono uppercase text-slate-400 bg-white/[0.04] px-1.5 py-0.5 rounded border border-white/[0.08]">
                     {alert.language}
                   </span>
                 )}
@@ -119,7 +119,7 @@ export const AlertDetailModal: React.FC<AlertDetailModalProps> = ({
 
           <button
             onClick={onClose}
-            className="p-1.5 text-slate-400 hover:text-white rounded-lg hover:bg-slate-800 transition-colors shrink-0"
+            className="p-2 text-slate-400 hover:text-white rounded-xl hover:bg-white/[0.06] transition-colors shrink-0"
           >
             <X className="w-5 h-5" />
           </button>

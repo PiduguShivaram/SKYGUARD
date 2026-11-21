@@ -4,7 +4,7 @@ import "./globals.css";
 export const metadata: Metadata = {
   title: "SkyGuard — Weather & Climate Intelligence",
   description:
-    "Authoritative public weather forecasts, official IMD disaster warnings, and research-grounded climate risk indicators.",
+    "Authoritative public weather forecasts, official IMD & WMO disaster warnings, and research-grounded climate risk indicators.",
 };
 
 export default function RootLayout({
@@ -14,7 +14,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" className="dark">
-      <body className="bg-slate-950 text-slate-100 antialiased selection:bg-blue-500 selection:text-white">
+      <body className="bg-[#06090e] text-slate-100 antialiased selection:bg-sky-500 selection:text-white min-h-screen">
         {children}
       </body>
     </html>

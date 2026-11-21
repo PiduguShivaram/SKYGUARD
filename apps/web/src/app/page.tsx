@@ -21,7 +21,7 @@ import {
   RiskEvaluationResponse,
   WeatherForecastResponse,
 } from "@/types";
-import { MapPin, CloudSun, Sprout, User } from "lucide-react";
+import { MapPin, CloudSun, Sprout, User, Compass, Globe, Sparkles } from "lucide-react";
 
 const POPULAR_CITIES = [
   { name: "Warangal", label: "Warangal, Telangana, India", lat: 17.9784, lon: 79.6005, country: "IN" },
@@ -161,7 +161,7 @@ export default function SkyGuardDashboard() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col bg-slate-950 text-slate-100 font-sans">
+    <div className="min-h-screen flex flex-col bg-[#06090e] text-slate-100 font-sans selection:bg-sky-500 selection:text-white">
       {/* Header with Mode Switcher & Push Bell */}
       <Header
         upstreamStatus={upstreamStatus}
@@ -172,30 +172,31 @@ export default function SkyGuardDashboard() {
       />
 
       {/* Main Content Area */}
-      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
+      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-7 space-y-7">
         {/* Search Bar & Location Selection */}
-        <div className="space-y-3">
+        <div className="space-y-3.5">
           <LocationSearchBar
             onLocationSelect={handleSelectLocation}
             selectedLocation={selectedLocation}
           />
 
           {/* Global Popular Cities Chips */}
-          <div className="flex items-center gap-2 overflow-x-auto pb-1 text-xs text-slate-400">
-            <span className="shrink-0 flex items-center gap-1 font-medium text-slate-500">
-              <MapPin className="w-3.5 h-3.5" /> Popular Global Cities:
+          <div className="flex items-center gap-2 overflow-x-auto pb-1 text-xs text-slate-400 scrollbar-none">
+            <span className="shrink-0 flex items-center gap-1.5 font-semibold text-slate-400 tracking-wider uppercase text-[11px]">
+              <MapPin className="w-3.5 h-3.5 text-sky-400" /> Popular Global Cities:
             </span>
             {POPULAR_CITIES.map((c) => (
               <button
                 key={c.name}
                 onClick={() => handleSelectQuickCity(c)}
-                className={`shrink-0 px-2.5 py-1 rounded-lg border transition-all ${
+                className={`shrink-0 px-3 py-1.5 rounded-xl border text-xs font-medium transition-all duration-150 flex items-center gap-1.5 ${
                   selectedLocation?.name === c.name
-                    ? "bg-blue-600/30 border-blue-500 text-blue-200 font-semibold shadow-sm"
-                    : "bg-slate-900 border-slate-800 text-slate-400 hover:text-white hover:border-slate-700"
+                    ? "bg-sky-500/20 border-sky-400/50 text-sky-200 font-semibold shadow-[0_0_12px_rgba(14,165,233,0.3)]"
+                    : "bg-[#0b1220] border-white/[0.08] text-slate-300 hover:text-white hover:border-slate-600 hover:bg-white/[0.04]"
                 }`}
               >
-                {c.name} ({c.country})
+                <span>{c.name}</span>
+                <span className="text-[10px] font-mono opacity-60">({c.country})</span>
               </button>
             ))}
           </div>
@@ -222,14 +223,15 @@ export default function SkyGuardDashboard() {
 
         {/* Initial Prompt State (No location selected yet) */}
         {!selectedLocation && !loadingWeather && !error && (
-          <div className="p-10 text-center rounded-2xl bg-slate-900/60 border border-slate-800 max-w-xl mx-auto shadow-2xl space-y-4">
-            <div className="w-14 h-14 rounded-2xl bg-blue-500/10 border border-blue-500/20 text-blue-400 flex items-center justify-center mx-auto">
-              <CloudSun className="w-7 h-7" />
+          <div className="relative overflow-hidden p-10 sm:p-12 text-center rounded-3xl bg-gradient-to-b from-[#0e1628] to-[#080d1a] border border-white/[0.1] max-w-xl mx-auto shadow-2xl space-y-4 backdrop-blur-xl">
+            <div className="absolute top-0 right-1/2 translate-x-1/2 -mt-16 w-64 h-64 bg-sky-500/10 rounded-full blur-3xl pointer-events-none" />
+            <div className="relative z-10 w-16 h-16 rounded-2xl bg-gradient-to-br from-sky-500/20 via-sky-600/10 to-transparent border border-sky-500/30 text-sky-400 flex items-center justify-center mx-auto shadow-[0_0_20px_-3px_rgba(14,165,233,0.3)]">
+              <CloudSun className="w-8 h-8" />
             </div>
-            <h2 className="text-xl font-bold text-white tracking-tight">
+            <h2 className="relative z-10 text-xl sm:text-2xl font-extrabold text-white tracking-tight">
               Ready for Global Weather &amp; Disaster Intelligence
             </h2>
-            <p className="text-xs text-slate-400 leading-relaxed max-w-md mx-auto">
+            <p className="relative z-10 text-xs sm:text-sm text-slate-400 leading-relaxed max-w-md mx-auto">
               Search any city worldwide or choose a popular city above to query genuine Open-Meteo forecasts alongside live WMO CAP and GDACS international disaster alerts.
             </p>
           </div>
@@ -238,8 +240,8 @@ export default function SkyGuardDashboard() {
         {/* Loading Skeletons */}
         {loadingWeather && (
           <div className="space-y-6 animate-pulse">
-            <div className="h-56 bg-slate-900/80 rounded-2xl border border-slate-800"></div>
-            <div className="h-64 bg-slate-900/80 rounded-2xl border border-slate-800"></div>
+            <div className="h-64 bg-[#0c1322]/80 rounded-3xl border border-white/[0.08]"></div>
+            <div className="h-64 bg-[#0c1322]/80 rounded-3xl border border-white/[0.08]"></div>
           </div>
         )}
 
@@ -248,7 +250,7 @@ export default function SkyGuardDashboard() {
           <>
             {/* PUBLIC MODE VIEW */}
             {appMode === "public" && (
-              <div className="space-y-6">
+              <div className="space-y-7">
                 {/* Current Conditions Hero Card */}
                 <CurrentWeatherCard
                   weather={weatherData}
@@ -268,7 +270,7 @@ export default function SkyGuardDashboard() {
 
             {/* FARMER MODE VIEW */}
             {appMode === "farmer" && (
-              <div className="space-y-6">
+              <div className="space-y-7">
                 {/* Phase 4: Gated Farmer Mode Agrometeorology Panel */}
                 <FarmerModePanel daily={weatherData.daily} />
 
