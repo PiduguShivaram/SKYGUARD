@@ -136,6 +136,7 @@ def test_farmer_mode_applicability_and_wording():
     assert "ICAR-AICRPAM" in res.provenance.provider
 
 
+@pytest.mark.live
 @pytest.mark.asyncio
 async def test_live_country_filtering_no_china_leak_for_in():
     """Verify that querying country_code='IN' yields zero Chinese alerts."""
