@@ -29,10 +29,14 @@ jobs:
           pip install -r services/api/requirements.txt
 
       - name: Run offline test suite
+        env:
+          PYTHONPATH: .
         run: |
           pytest services/api/tests/ -v -m "not live"
 
       - name: Run production security and geospatial tests
+        env:
+          PYTHONPATH: .
         run: |
           pytest services/api/tests/test_production_security_geo.py -v
 
