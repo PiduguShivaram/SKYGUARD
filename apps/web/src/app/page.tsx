@@ -21,7 +21,7 @@ import {
   RiskEvaluationResponse,
   WeatherForecastResponse,
 } from "@/types";
-import { MapPin, CloudSun, Sprout, User, Compass, Globe, Sparkles } from "lucide-react";
+import { MapPin, CloudSun, Sprout, User, Compass, Globe, Sparkles, Navigation, Target } from "lucide-react";
 
 const POPULAR_CITIES = [
   { name: "Warangal", label: "Warangal, Telangana, India", lat: 17.9784, lon: 79.6005, country: "IN" },
@@ -161,7 +161,7 @@ export default function SkyGuardDashboard() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col bg-[#06090e] text-slate-100 font-sans selection:bg-sky-500 selection:text-white">
+    <div className="min-h-screen flex flex-col bg-[#0b0d10] text-zinc-100 font-sans selection:bg-amber-500 selection:text-black">
       {/* Header with Mode Switcher & Push Bell */}
       <Header
         upstreamStatus={upstreamStatus}
@@ -180,23 +180,23 @@ export default function SkyGuardDashboard() {
             selectedLocation={selectedLocation}
           />
 
-          {/* Global Popular Cities Chips */}
-          <div className="flex items-center gap-2 overflow-x-auto pb-1 text-xs text-slate-400 scrollbar-none">
-            <span className="shrink-0 flex items-center gap-1.5 font-semibold text-slate-400 tracking-wider uppercase text-[11px]">
-              <MapPin className="w-3.5 h-3.5 text-sky-400" /> Popular Global Cities:
+          {/* Global Popular Cities Geodetic Waypoint Chips */}
+          <div className="flex items-center gap-2 overflow-x-auto pb-1 text-xs text-zinc-400 font-mono scrollbar-none">
+            <span className="shrink-0 flex items-center gap-1.5 font-bold text-zinc-500 tracking-wider uppercase text-[10px]">
+              <Target className="w-3.5 h-3.5 text-amber-400" /> Geodetic Waypoints:
             </span>
             {POPULAR_CITIES.map((c) => (
               <button
                 key={c.name}
                 onClick={() => handleSelectQuickCity(c)}
-                className={`shrink-0 px-3 py-1.5 rounded-xl border text-xs font-medium transition-all duration-150 flex items-center gap-1.5 ${
+                className={`shrink-0 px-3 py-1.5 rounded-lg border text-xs font-mono transition-all duration-150 flex items-center gap-1.5 ${
                   selectedLocation?.name === c.name
-                    ? "bg-sky-500/20 border-sky-400/50 text-sky-200 font-semibold shadow-[0_0_12px_rgba(14,165,233,0.3)]"
-                    : "bg-[#0b1220] border-white/[0.08] text-slate-300 hover:text-white hover:border-slate-600 hover:bg-white/[0.04]"
+                    ? "bg-[#181d28] border-amber-500/50 text-amber-200 font-bold shadow-[0_0_12px_rgba(245,158,11,0.25)]"
+                    : "bg-[#11141b] border-[#202532] text-zinc-300 hover:text-white hover:border-[#333b4e] hover:bg-[#161a24]"
                 }`}
               >
                 <span>{c.name}</span>
-                <span className="text-[10px] font-mono opacity-60">({c.country})</span>
+                <span className="text-[10px] opacity-60">[{c.country}]</span>
               </button>
             ))}
           </div>
@@ -223,25 +223,36 @@ export default function SkyGuardDashboard() {
 
         {/* Initial Prompt State (No location selected yet) */}
         {!selectedLocation && !loadingWeather && !error && (
-          <div className="relative overflow-hidden p-10 sm:p-12 text-center rounded-3xl bg-gradient-to-b from-[#0e1628] to-[#080d1a] border border-white/[0.1] max-w-xl mx-auto shadow-2xl space-y-4 backdrop-blur-xl">
-            <div className="absolute top-0 right-1/2 translate-x-1/2 -mt-16 w-64 h-64 bg-sky-500/10 rounded-full blur-3xl pointer-events-none" />
-            <div className="relative z-10 w-16 h-16 rounded-2xl bg-gradient-to-br from-sky-500/20 via-sky-600/10 to-transparent border border-sky-500/30 text-sky-400 flex items-center justify-center mx-auto shadow-[0_0_20px_-3px_rgba(14,165,233,0.3)]">
-              <CloudSun className="w-8 h-8" />
+          <div className="relative overflow-hidden p-10 sm:p-12 text-center rounded-2xl bg-[#11141b] border border-[#202532] max-w-xl mx-auto shadow-2xl space-y-4">
+            {/* Geodetic Corner Ticks */}
+            <div className="absolute top-2 left-2 text-[#2b3243] font-mono text-[9px] select-none pointer-events-none">+</div>
+            <div className="absolute top-2 right-2 text-[#2b3243] font-mono text-[9px] select-none pointer-events-none">+</div>
+            <div className="absolute bottom-2 left-2 text-[#2b3243] font-mono text-[9px] select-none pointer-events-none">+</div>
+            <div className="absolute bottom-2 right-2 text-[#2b3243] font-mono text-[9px] select-none pointer-events-none">+</div>
+
+            <div className="w-16 h-16 rounded-xl bg-[#161b24] border border-[#272e3d] text-amber-400 flex items-center justify-center mx-auto shadow-inner">
+              <Compass className="w-8 h-8 stroke-[1.8]" />
             </div>
-            <h2 className="relative z-10 text-xl sm:text-2xl font-extrabold text-white tracking-tight">
+
+            <h2 className="text-xl sm:text-2xl font-extrabold text-white tracking-tight font-sans">
               Ready for Global Weather &amp; Disaster Intelligence
             </h2>
-            <p className="relative z-10 text-xs sm:text-sm text-slate-400 leading-relaxed max-w-md mx-auto">
+
+            <p className="text-xs sm:text-sm text-zinc-400 leading-relaxed max-w-md mx-auto font-mono">
               Search any city worldwide or choose a popular city above to query genuine Open-Meteo forecasts alongside live WMO CAP and GDACS international disaster alerts.
             </p>
+
+            <div className="pt-2 flex items-center justify-center gap-2 text-[10px] font-mono text-zinc-500 uppercase tracking-widest">
+              <span>[ AWAITING GEODETIC TARGET ]</span>
+            </div>
           </div>
         )}
 
         {/* Loading Skeletons */}
         {loadingWeather && (
           <div className="space-y-6 animate-pulse">
-            <div className="h-64 bg-[#0c1322]/80 rounded-3xl border border-white/[0.08]"></div>
-            <div className="h-64 bg-[#0c1322]/80 rounded-3xl border border-white/[0.08]"></div>
+            <div className="h-64 bg-[#11141b] rounded-2xl border border-[#202532]"></div>
+            <div className="h-64 bg-[#11141b] rounded-2xl border border-[#202532]"></div>
           </div>
         )}
 
@@ -260,11 +271,14 @@ export default function SkyGuardDashboard() {
                 {/* 24-Hour Hourly Trend Curve */}
                 <HourlyChart hourly={weatherData.hourly} units={weatherData.units} />
 
-                {/* Seven-Day Daily Summary */}
-                <DailyForecastList daily={weatherData.daily} units={weatherData.units} />
+                {/* Synoptic Operations Grid: 7-Day Horizon & Risk Analysis */}
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-7">
+                  {/* Seven-Day Daily Summary */}
+                  <DailyForecastList daily={weatherData.daily} units={weatherData.units} />
 
-                {/* Phase 3: Derived Scientific Weather Risk Indicators */}
-                <DerivedRiskCard riskData={riskData} loading={loadingRisk} />
+                  {/* Phase 3: Derived Scientific Weather Risk Indicators */}
+                  <DerivedRiskCard riskData={riskData} loading={loadingRisk} />
+                </div>
               </div>
             )}
 

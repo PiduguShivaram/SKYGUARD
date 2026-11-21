@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
-import { Clock, Droplets, Thermometer, TrendingUp } from "lucide-react";
+import { Clock, Droplets, Thermometer, TrendingUp, Activity } from "lucide-react";
 import { HourlyForecastPoint } from "@/types";
 
 interface HourlyChartProps {
@@ -17,7 +17,7 @@ export const HourlyChart: React.FC<HourlyChartProps> = ({ hourly, units }) => {
 
   if (!data || data.length === 0) {
     return (
-      <div className="p-6 bg-[#0c1322]/80 rounded-2xl border border-white/[0.08] text-center text-slate-400 text-xs">
+      <div className="p-6 bg-[#11141b] rounded-2xl border border-[#202532] text-center text-zinc-400 text-xs font-mono">
         Hourly numerical forecast data unavailable.
       </div>
     );
@@ -59,21 +59,25 @@ export const HourlyChart: React.FC<HourlyChartProps> = ({ hourly, units }) => {
   const activePoint = hoverIndex !== null ? points[hoverIndex] : null;
 
   return (
-    <div className="rounded-3xl bg-gradient-to-br from-[#0c1322] via-[#0a101d] to-[#070b14] border border-white/[0.08] p-6 sm:p-7 shadow-2xl backdrop-blur-xl">
+    <div className="rounded-2xl bg-[#11141b] border border-[#202532] p-6 sm:p-7 shadow-2xl relative">
+      {/* Geodetic Corner Ticks */}
+      <div className="absolute top-2 left-2 text-[#2b3243] font-mono text-[9px] select-none pointer-events-none">+</div>
+      <div className="absolute top-2 right-2 text-[#2b3243] font-mono text-[9px] select-none pointer-events-none">+</div>
+
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-5">
         <div>
           <h3 className="text-base font-bold text-white flex items-center gap-2">
-            <Clock className="w-4 h-4 text-sky-400" />
+            <Clock className="w-4 h-4 text-amber-400" />
             <span>24-Hour Temperature &amp; Rain Outlook</span>
           </h3>
-          <p className="text-xs text-slate-400">
+          <p className="text-xs text-zinc-400 font-mono">
             Air temperature ({tempUnit}) and precipitation chance (%) directly from Open-Meteo
           </p>
         </div>
 
         {activePoint && (
-          <div className="flex items-center gap-3 text-xs bg-[#060a14]/90 px-3.5 py-1.5 rounded-xl border border-white/[0.1] shadow-inner font-mono">
-            <span className="text-slate-300 font-medium">
+          <div className="flex items-center gap-3 text-xs bg-[#0c0e13] px-3.5 py-1.5 rounded-lg border border-[#252b3a] shadow-inner font-mono">
+            <span className="text-zinc-300 font-medium">
               {new Date(activePoint.data.time).toLocaleTimeString([], { hour: "numeric", hour12: true })}
             </span>
             <span className="text-amber-400 font-bold flex items-center gap-1">
@@ -100,9 +104,9 @@ export const HourlyChart: React.FC<HourlyChartProps> = ({ hourly, units }) => {
           >
             <defs>
               <linearGradient id="hourlyTempGrad" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor="#38BDF8" stopOpacity="0.35" />
-                <stop offset="60%" stopColor="#0EA5E9" stopOpacity="0.1" />
-                <stop offset="100%" stopColor="#0EA5E9" stopOpacity="0.0" />
+                <stop offset="0%" stopColor="#F59E0B" stopOpacity="0.25" />
+                <stop offset="70%" stopColor="#D97706" stopOpacity="0.05" />
+                <stop offset="100%" stopColor="#B45309" stopOpacity="0.0" />
               </linearGradient>
             </defs>
 
@@ -117,7 +121,7 @@ export const HourlyChart: React.FC<HourlyChartProps> = ({ hourly, units }) => {
                     y1={y}
                     x2={svgWidth - paddingX}
                     y2={y}
-                    stroke="#1e2c47"
+                    stroke="#1c212d"
                     strokeDasharray="4 4"
                     strokeWidth="1"
                   />
@@ -125,7 +129,7 @@ export const HourlyChart: React.FC<HourlyChartProps> = ({ hourly, units }) => {
                     x={paddingX - 8}
                     y={y + 4}
                     textAnchor="end"
-                    fill="#64748b"
+                    fill="#525d73"
                     fontSize="10"
                     fontFamily="monospace"
                   >
@@ -142,102 +146,66 @@ export const HourlyChart: React.FC<HourlyChartProps> = ({ hourly, units }) => {
             <path
               d={pathD}
               fill="none"
-              stroke="#38BDF8"
+              stroke="#F59E0B"
               strokeWidth="2.5"
               strokeLinecap="round"
               strokeLinejoin="round"
             />
 
-            {/* Interactive Data Points and Labels */}
+            {/* Vertical Cursor on Hover */}
+            {activePoint && (
+              <line
+                x1={activePoint.x}
+                y1={paddingTop}
+                x2={activePoint.x}
+                y2={svgHeight - paddingBottom}
+                stroke="#FBBF24"
+                strokeWidth="1.5"
+                strokeDasharray="2 2"
+              />
+            )}
+
+            {/* Interactive Data Nodes */}
             {points.map((pt, idx) => {
-              const date = new Date(pt.data.time);
-              const hourLabel = date.toLocaleTimeString([], { hour: "numeric", hour12: true });
-              const isSelected = hoverIndex === idx;
+              const isHovered = hoverIndex === idx;
+              const hourLabel = new Date(pt.data.time).toLocaleTimeString([], { hour: "numeric" });
+              const showLabel = idx % 3 === 0 || idx === points.length - 1;
 
               return (
                 <g
                   key={idx}
-                  className="cursor-pointer transition-all duration-150"
+                  className="cursor-pointer"
                   onMouseEnter={() => setHoverIndex(idx)}
                 >
-                  {/* Invisible broad hit target for hover */}
-                  <rect
-                    x={pt.x - 14}
-                    y={paddingTop}
-                    width={28}
-                    height={chartHeight + paddingBottom}
-                    fill="transparent"
-                  />
-
-                  {/* Vertical hover guide bar */}
-                  {isSelected && (
-                    <line
-                      x1={pt.x}
-                      y1={paddingTop}
-                      x2={pt.x}
-                      y2={svgHeight - paddingBottom}
-                      stroke="#38BDF8"
-                      strokeWidth="1.5"
-                      strokeDasharray="2 2"
-                      opacity="0.8"
-                    />
-                  )}
-
-                  {/* Point Circle */}
                   <circle
                     cx={pt.x}
                     cy={pt.y}
-                    r={isSelected ? 5.5 : 3}
-                    fill={isSelected ? "#38BDF8" : "#0c1322"}
-                    stroke="#38BDF8"
-                    strokeWidth={isSelected ? "2.5" : "2"}
+                    r={isHovered ? 5.5 : 2.5}
+                    fill={isHovered ? "#FBBF24" : "#D97706"}
+                    stroke="#0B0D10"
+                    strokeWidth={isHovered ? 2.5 : 1}
                     className="transition-all duration-150"
                   />
-
-                  {/* Temperature label above point on select or key intervals */}
-                  {(isSelected || idx % 4 === 0) && (
+                  {showLabel && (
                     <text
                       x={pt.x}
-                      y={pt.y - 10}
+                      y={svgHeight - paddingBottom + 18}
                       textAnchor="middle"
-                      fill={isSelected ? "#FFFFFF" : "#94A3B8"}
-                      fontSize={isSelected ? "11" : "10"}
-                      fontWeight={isSelected ? "bold" : "normal"}
+                      fill="#64748b"
+                      fontSize="9"
                       fontFamily="monospace"
-                    >
-                      {pt.data.temperature_2m.toFixed(0)}°
-                    </text>
-                  )}
-
-                  {/* Precipitation Probability bar at the bottom */}
-                  {pt.data.precipitation_probability !== undefined &&
-                    pt.data.precipitation_probability !== null &&
-                    pt.data.precipitation_probability > 0 && (
-                      <rect
-                        x={pt.x - 4}
-                        y={svgHeight - paddingBottom - Math.min(20, (pt.data.precipitation_probability / 100) * 20)}
-                        width={8}
-                        height={Math.min(20, (pt.data.precipitation_probability / 100) * 20)}
-                        rx="2"
-                        fill="#38BDF8"
-                        opacity={isSelected ? "0.9" : "0.5"}
-                      />
-                    )}
-
-                  {/* Time label below chart */}
-                  {(idx % 3 === 0 || isSelected) && (
-                    <text
-                      x={pt.x}
-                      y={svgHeight - 12}
-                      textAnchor="middle"
-                      fill={isSelected ? "#38BDF8" : "#64748B"}
-                      fontSize="10"
-                      fontWeight={isSelected ? "bold" : "normal"}
-                      fontFamily="sans-serif"
                     >
                       {hourLabel}
                     </text>
                   )}
+                  {/* Invisible hit target for smooth hovering */}
+                  <rect
+                    x={pt.x - chartWidth / (data.length * 2)}
+                    y={paddingTop}
+                    width={chartWidth / data.length}
+                    height={chartHeight + paddingBottom}
+                    fill="transparent"
+                  />
                 </g>
               );
             })}

@@ -19,6 +19,7 @@ import {
   Eye,
   Tag,
   Radio,
+  Compass,
 } from "lucide-react";
 import { GlobalAlertItem, GlobalAlertsResponse } from "@/types";
 
@@ -49,10 +50,10 @@ export const GlobalAlertsPanel: React.FC<GlobalAlertsPanelProps> = ({
 
   if (loading && !alertsData) {
     return (
-      <div className="rounded-3xl bg-[#0c1322]/80 border border-white/[0.08] p-6 sm:p-7 shadow-2xl backdrop-blur-xl animate-pulse space-y-4">
-        <div className="h-6 bg-white/[0.05] rounded w-1/3"></div>
-        <div className="h-10 bg-white/[0.04] rounded-xl"></div>
-        <div className="h-40 bg-white/[0.02] rounded-2xl"></div>
+      <div className="rounded-2xl bg-[#11141b] border border-[#202532] p-6 sm:p-7 shadow-2xl animate-pulse space-y-4 font-mono">
+        <div className="h-6 bg-[#1a1f2c] rounded w-1/3"></div>
+        <div className="h-10 bg-[#161a25] rounded-lg"></div>
+        <div className="h-40 bg-[#141822] rounded-xl"></div>
       </div>
     );
   }
@@ -68,27 +69,27 @@ export const GlobalAlertsPanel: React.FC<GlobalAlertsPanelProps> = ({
   const getSeverityBadgeClass = (sev: string) => {
     switch (sev.toLowerCase()) {
       case "extreme":
-        return "bg-rose-500/20 text-rose-300 border border-rose-500/40 shadow-[0_0_8px_rgba(244,63,94,0.3)]";
+        return "bg-rose-500/20 text-rose-300 border border-rose-500/40 shadow-[0_0_8px_rgba(239,68,68,0.25)]";
       case "severe":
-        return "bg-orange-500/20 text-orange-300 border border-orange-500/40 shadow-[0_0_8px_rgba(249,115,22,0.3)]";
+        return "bg-orange-500/20 text-orange-300 border border-orange-500/40 shadow-[0_0_8px_rgba(249,115,22,0.25)]";
       case "moderate":
         return "bg-amber-500/20 text-amber-300 border border-amber-500/40";
       case "minor":
         return "bg-sky-500/20 text-sky-300 border border-sky-500/40";
       default:
-        return "bg-slate-500/20 text-slate-300 border border-slate-500/40";
+        return "bg-zinc-700/30 text-zinc-300 border border-zinc-600/40";
     }
   };
 
   const getColorCodeBadgeClass = (colorStr?: string) => {
-    if (!colorStr) return "bg-[#060a14] text-slate-300 border-white/[0.08]";
+    if (!colorStr) return "bg-[#0c0e13] text-zinc-300 border-[#202532]";
     const c = colorStr.toLowerCase();
     if (c.includes("red") || c.includes("level i")) return "bg-rose-500/20 text-rose-300 border-rose-500/40";
     if (c.includes("orange") || c.includes("level ii")) return "bg-orange-500/20 text-orange-300 border-orange-500/40";
     if (c.includes("yellow") || c.includes("level iii")) return "bg-amber-500/20 text-amber-300 border-amber-500/40";
     if (c.includes("blue") || c.includes("level iv")) return "bg-sky-500/20 text-sky-300 border-sky-500/40";
     if (c.includes("green")) return "bg-emerald-500/20 text-emerald-300 border-emerald-500/40";
-    return "bg-[#060a14] text-slate-300 border-white/[0.08]";
+    return "bg-[#0c0e13] text-zinc-300 border-[#202532]";
   };
 
   const renderGeographicBadge = (status?: string) => {
@@ -96,7 +97,7 @@ export const GlobalAlertsPanel: React.FC<GlobalAlertsPanelProps> = ({
       case "POLYGON_VERIFIED":
         return (
           <span
-            className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/35 shadow-[0_0_8px_rgba(16,185,129,0.2)]"
+            className="text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/35"
             title="Boundary strictly verified against official source polygon"
           >
             Polygon Verified
@@ -105,7 +106,7 @@ export const GlobalAlertsPanel: React.FC<GlobalAlertsPanelProps> = ({
       case "COORDINATE_POINT":
         return (
           <span
-            className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-full bg-sky-500/20 text-sky-300 border border-sky-500/35 shadow-[0_0_8px_rgba(14,165,233,0.2)]"
+            className="text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-sky-500/20 text-sky-300 border border-sky-500/35"
             title="Authentic centroid coordinate point provided"
           >
             Point Location
@@ -114,7 +115,7 @@ export const GlobalAlertsPanel: React.FC<GlobalAlertsPanelProps> = ({
       case "TERRITORY_NATIONAL":
         return (
           <span
-            className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-full bg-purple-500/20 text-purple-300 border border-purple-500/35"
+            className="text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-purple-500/20 text-purple-300 border border-purple-500/35"
             title="Explicit country-wide or territorial emergency scope"
           >
             Territory / National
@@ -123,7 +124,7 @@ export const GlobalAlertsPanel: React.FC<GlobalAlertsPanelProps> = ({
       case "LOCATION_UNVERIFIED":
         return (
           <span
-            className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/35"
+            className="text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/35"
             title="Specific polygon not provided in feed summary; precision location unverified"
           >
             Location Unverified
@@ -137,27 +138,31 @@ export const GlobalAlertsPanel: React.FC<GlobalAlertsPanelProps> = ({
   const getDisasterIcon = (event: string) => {
     const ev = event.toLowerCase();
     if (ev.includes("cyclone") || ev.includes("hurricane") || ev.includes("typhoon")) {
-      return <Wind className="w-5 h-5 text-sky-400" />;
+      return <Wind className="w-4 h-4 text-sky-400" />;
     }
     if (ev.includes("flood")) {
-      return <Waves className="w-5 h-5 text-blue-400" />;
+      return <Waves className="w-4 h-4 text-sky-400" />;
     }
     if (ev.includes("earthquake")) {
-      return <Activity className="w-5 h-5 text-amber-400" />;
+      return <Activity className="w-4 h-4 text-amber-400" />;
     }
     if (ev.includes("wildfire") || ev.includes("fire")) {
-      return <Flame className="w-5 h-5 text-rose-400" />;
+      return <Flame className="w-4 h-4 text-rose-400" />;
     }
-    return <ShieldAlert className="w-5 h-5 text-orange-400" />;
+    return <ShieldAlert className="w-4 h-4 text-orange-400" />;
   };
 
   return (
-    <div className="rounded-3xl bg-gradient-to-br from-[#0c1322] via-[#0a101d] to-[#070b14] border border-white/[0.08] p-6 sm:p-7 shadow-2xl backdrop-blur-xl space-y-6">
+    <div className="rounded-2xl bg-[#11141b] border border-[#202532] p-6 sm:p-7 shadow-2xl space-y-6 relative">
+      {/* Geodetic Corner Ticks */}
+      <div className="absolute top-2 left-2 text-[#2b3243] font-mono text-[9px] select-none pointer-events-none">+</div>
+      <div className="absolute top-2 right-2 text-[#2b3243] font-mono text-[9px] select-none pointer-events-none">+</div>
+
       {/* Header & Controls */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-5 border-b border-white/[0.08]">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-5 border-b border-[#1c212d]">
         <div>
           <div className="flex items-center gap-3">
-            <div className="p-3 bg-sky-500/15 text-sky-400 rounded-2xl border border-sky-500/30 shadow-[0_0_15px_-3px_rgba(14,165,233,0.3)]">
+            <div className="p-3 bg-[#171b24] text-amber-400 rounded-xl border border-[#262c3b] shadow-inner">
               <Globe2 className="w-5 h-5" />
             </div>
             <div>
@@ -165,11 +170,11 @@ export const GlobalAlertsPanel: React.FC<GlobalAlertsPanelProps> = ({
                 <h3 className="text-lg font-bold text-white tracking-tight">
                   Worldwide Weather &amp; Disaster Alerts
                 </h3>
-                <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-amber-500/15 text-amber-300 border border-amber-500/30 uppercase">
                   GLOBAL CAP · GDACS
                 </span>
               </div>
-              <p className="text-xs text-slate-400 mt-0.5">
+              <p className="text-xs text-zinc-400 mt-0.5 font-mono">
                 Authentic WMO Common Alerting Protocol bulletins &amp; UN OCHA / EC GDACS disaster feeds
               </p>
             </div>
@@ -181,10 +186,10 @@ export const GlobalAlertsPanel: React.FC<GlobalAlertsPanelProps> = ({
           {/* Toggle between Local/Country filter and Worldwide */}
           <button
             onClick={onToggleFilter}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold border transition-all duration-150 ${
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all duration-150 font-mono ${
               isFiltered
-                ? "bg-sky-500/20 border-sky-500/40 text-sky-200 shadow-[0_0_12px_rgba(14,165,233,0.25)]"
-                : "bg-[#060a14] border-white/[0.08] text-slate-300 hover:text-white"
+                ? "bg-amber-500/15 border-amber-500/40 text-amber-200 shadow-[0_0_12px_rgba(245,158,11,0.2)]"
+                : "bg-[#0c0e13] border-[#202532] text-zinc-300 hover:text-white"
             }`}
             title="Toggle geographic filtering"
           >
@@ -199,16 +204,16 @@ export const GlobalAlertsPanel: React.FC<GlobalAlertsPanelProps> = ({
           <button
             onClick={onRefresh}
             disabled={loading}
-            className="flex items-center gap-1.5 px-3 py-1.5 bg-[#060a14] hover:bg-white/[0.06] border border-white/[0.08] text-slate-300 hover:text-white rounded-xl text-xs font-medium transition-colors"
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-[#0c0e13] hover:bg-[#161a24] border border-[#202532] text-zinc-300 hover:text-white rounded-lg text-xs font-mono transition-colors"
           >
-            <RefreshCw className={`w-3.5 h-3.5 ${loading ? "animate-spin text-sky-400" : ""}`} />
+            <RefreshCw className={`w-3.5 h-3.5 ${loading ? "animate-spin text-amber-400" : ""}`} />
             <span>Refresh</span>
           </button>
 
           {onOpenNotifications && (
             <button
               onClick={onOpenNotifications}
-              className="flex items-center gap-1.5 px-3 py-1.5 bg-sky-500/20 hover:bg-sky-500/30 border border-sky-500/40 text-sky-200 rounded-xl text-xs font-medium transition-colors shadow-sm"
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-amber-500/15 hover:bg-amber-500/25 border border-amber-500/40 text-amber-200 rounded-lg text-xs font-mono transition-colors shadow-sm"
               title="Configure Web Push notifications"
             >
               <Bell className="w-3.5 h-3.5" />
@@ -219,31 +224,31 @@ export const GlobalAlertsPanel: React.FC<GlobalAlertsPanelProps> = ({
       </div>
 
       {/* Scope & Count Breakdown Banner */}
-      <div className="p-4 bg-[#060a14]/90 rounded-2xl border border-white/[0.06] flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs shadow-inner">
+      <div className="p-4 bg-[#0c0e13] rounded-xl border border-[#1e2330] flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs shadow-inner font-mono">
         <div className="flex items-center gap-2">
-          <span className="font-semibold text-slate-400 uppercase tracking-wider text-[11px]">Current Scope:</span>
+          <span className="font-semibold text-zinc-400 uppercase tracking-wider text-[11px]">Current Scope:</span>
           {isFiltered ? (
-            <span className="px-2.5 py-0.5 rounded-full bg-sky-500/20 text-sky-200 font-mono font-bold border border-sky-500/30">
+            <span className="px-2.5 py-0.5 rounded bg-amber-500/20 text-amber-200 font-bold border border-amber-500/30">
               Verified Territory: {selectedCountry || "Selected Coordinates"}
             </span>
           ) : (
-            <span className="px-2.5 py-0.5 rounded-full bg-purple-500/20 text-purple-200 font-semibold border border-purple-500/30">
+            <span className="px-2.5 py-0.5 rounded bg-purple-500/20 text-purple-200 font-semibold border border-purple-500/30">
               Worldwide Planetary Aggregate
             </span>
           )}
         </div>
 
-        <div className="flex items-center gap-4 text-slate-400 font-mono text-[11px]">
+        <div className="flex items-center gap-4 text-zinc-400 text-[11px]">
           <div>
             Filtered Matching:{" "}
             <strong className="text-white">
               {officialWarnings.length} CAP warnings · {disasterAlerts.length} disasters
             </strong>
           </div>
-          <span className="text-slate-700">|</span>
+          <span className="text-zinc-600">|</span>
           <div>
             Active Worldwide:{" "}
-            <span className="text-slate-300 font-medium">
+            <span className="text-zinc-300 font-medium">
               {worldwideOfficialTotal.toLocaleString()} CAP bulletins · {worldwideDisastersTotal.toLocaleString()} disasters
             </span>
           </div>
@@ -253,9 +258,9 @@ export const GlobalAlertsPanel: React.FC<GlobalAlertsPanelProps> = ({
       {/* Provider Health & Status Bar */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
         {/* WMO SWIC */}
-        <div className="p-3.5 bg-[#060a14]/80 rounded-2xl border border-white/[0.08] flex items-center justify-between">
+        <div className="p-3.5 bg-[#0c0e13] rounded-xl border border-[#1e2330] flex items-center justify-between">
           <div>
-            <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-400 font-mono">
+            <span className="text-[10px] font-semibold uppercase tracking-wider text-zinc-400 font-mono">
               WMO SWIC (Official CAP)
             </span>
             <p className="text-xs font-bold text-white mt-0.5 font-mono">
@@ -272,9 +277,9 @@ export const GlobalAlertsPanel: React.FC<GlobalAlertsPanelProps> = ({
         </div>
 
         {/* GDACS */}
-        <div className="p-3.5 bg-[#060a14]/80 rounded-2xl border border-white/[0.08] flex items-center justify-between">
+        <div className="p-3.5 bg-[#0c0e13] rounded-xl border border-[#1e2330] flex items-center justify-between">
           <div>
-            <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-400 font-mono">
+            <span className="text-[10px] font-semibold uppercase tracking-wider text-zinc-400 font-mono">
               GDACS (UN OCHA / EC)
             </span>
             <p className="text-xs font-bold text-white mt-0.5 font-mono">
@@ -291,9 +296,9 @@ export const GlobalAlertsPanel: React.FC<GlobalAlertsPanelProps> = ({
         </div>
 
         {/* Alert-Hub.org */}
-        <div className="p-3.5 bg-[#060a14]/80 rounded-2xl border border-white/[0.08] flex items-center justify-between">
+        <div className="p-3.5 bg-[#0c0e13] rounded-xl border border-[#1e2330] flex items-center justify-between">
           <div>
-            <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-400 font-mono">
+            <span className="text-[10px] font-semibold uppercase tracking-wider text-zinc-400 font-mono">
               Alert-Hub.org Stream
             </span>
             <p className="text-xs font-bold text-white mt-0.5 font-mono">
@@ -311,28 +316,28 @@ export const GlobalAlertsPanel: React.FC<GlobalAlertsPanelProps> = ({
       </div>
 
       {/* Categorical Tabs */}
-      <div className="flex border-b border-white/[0.08]">
+      <div className="flex border-b border-[#1c212d]">
         <button
           onClick={() => setActiveTab("official")}
-          className={`pb-3.5 px-4 text-xs font-bold transition-all border-b-2 flex items-center gap-2 ${
+          className={`pb-3 px-4 text-xs font-bold transition-all border-b-2 flex items-center gap-2 font-mono ${
             activeTab === "official"
-              ? "border-sky-500 text-sky-400"
-              : "border-transparent text-slate-400 hover:text-slate-200"
+              ? "border-amber-400 text-amber-300"
+              : "border-transparent text-zinc-400 hover:text-zinc-200"
           }`}
         >
-          <ShieldAlert className="w-4 h-4" />
+          <ShieldAlert className="w-4 h-4 text-amber-400" />
           <span>Official CAP Severe Warnings ({officialWarnings.length})</span>
         </button>
 
         <button
           onClick={() => setActiveTab("gdacs")}
-          className={`pb-3.5 px-4 text-xs font-bold transition-all border-b-2 flex items-center gap-2 ${
+          className={`pb-3 px-4 text-xs font-bold transition-all border-b-2 flex items-center gap-2 font-mono ${
             activeTab === "gdacs"
-              ? "border-amber-500 text-amber-400"
-              : "border-transparent text-slate-400 hover:text-slate-200"
+              ? "border-amber-400 text-amber-300"
+              : "border-transparent text-zinc-400 hover:text-zinc-200"
           }`}
         >
-          <Activity className="w-4 h-4" />
+          <Activity className="w-4 h-4 text-amber-400" />
           <span>Multi-Hazard Disasters — GDACS ({disasterAlerts.length})</span>
         </button>
       </div>
@@ -350,20 +355,20 @@ export const GlobalAlertsPanel: React.FC<GlobalAlertsPanelProps> = ({
               return (
                 <div
                   key={alert.id}
-                  className="p-4 sm:p-5 rounded-2xl bg-[#060a14]/80 border border-white/[0.06] hover:border-sky-500/30 transition-all duration-150 space-y-2.5"
+                  className="p-4 sm:p-5 rounded-xl bg-[#0c0e13] border border-[#1e2330] hover:border-amber-500/30 transition-all duration-150 space-y-2.5"
                 >
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                     <div className="flex items-center gap-2 flex-wrap">
-                      <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-full bg-sky-500/20 text-sky-300 border border-sky-500/30">
+                      <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-amber-500/15 text-amber-300 border border-amber-500/30">
                         Official CAP Warning
                       </span>
 
-                      <span className={`text-[11px] font-mono font-bold px-2.5 py-0.5 rounded-full ${getSeverityBadgeClass(alert.severity)}`}>
+                      <span className={`text-[11px] font-mono font-bold px-2.5 py-0.5 rounded ${getSeverityBadgeClass(alert.severity)}`}>
                         {alert.severity}
                       </span>
 
                       {alert.local_color_code && (
-                        <span className={`text-[11px] font-mono font-bold px-2.5 py-0.5 rounded-full border ${getColorCodeBadgeClass(alert.local_color_code)}`}>
+                        <span className={`text-[11px] font-mono font-bold px-2.5 py-0.5 rounded border ${getColorCodeBadgeClass(alert.local_color_code)}`}>
                           {alert.local_color_code}
                         </span>
                       )}
@@ -371,23 +376,23 @@ export const GlobalAlertsPanel: React.FC<GlobalAlertsPanelProps> = ({
                       {renderGeographicBadge(alert.geographic_status)}
 
                       {alert.msg_type === "Cancel" && (
-                        <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-full bg-rose-500/20 text-rose-300 border border-rose-500/40">
+                        <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-rose-500/20 text-rose-300 border border-rose-500/40">
                           CANCELLED
                         </span>
                       )}
 
-                      <span className="text-[11px] font-medium text-slate-400 bg-white/[0.03] px-2 py-0.5 rounded-md border border-white/[0.06]">
+                      <span className="text-[11px] font-medium text-zinc-400 bg-[#161a24] px-2 py-0.5 rounded border border-[#232938]">
                         {alert.source_provider}
                       </span>
 
                       {alert.country_code && (
-                        <span className="text-[11px] font-mono font-bold text-sky-300 bg-sky-950/40 px-2 py-0.5 rounded-md border border-sky-500/30">
+                        <span className="text-[11px] font-mono font-bold text-amber-300 bg-amber-950/40 px-2 py-0.5 rounded border border-amber-500/30">
                           {alert.country_code}
                         </span>
                       )}
                     </div>
 
-                    <div className="text-[11px] text-slate-500 font-mono">
+                    <div className="text-[11px] text-zinc-500 font-mono">
                       {alert.effective_time ? `Issued: ${alert.effective_time}` : ""}
                     </div>
                   </div>
@@ -395,25 +400,25 @@ export const GlobalAlertsPanel: React.FC<GlobalAlertsPanelProps> = ({
                   <h4 className="text-sm font-bold text-white leading-snug">{alert.headline}</h4>
 
                   {!isDescRedundant && (
-                    <p className="text-xs text-slate-300 line-clamp-2 leading-relaxed">{alert.description}</p>
+                    <p className="text-xs text-zinc-300 line-clamp-2 leading-relaxed font-mono">{alert.description}</p>
                   )}
 
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pt-2.5 border-t border-white/[0.06] text-[11px] text-slate-400">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pt-2.5 border-t border-[#1a1f2c] text-[11px] text-zinc-400 font-mono">
                     <div className="flex items-center gap-2 flex-wrap">
-                      <span className="font-semibold text-slate-500">Issuer:</span>
-                      <span className="text-slate-300 font-medium">{alert.issuer}</span>
-                      <span className="text-slate-600">·</span>
-                      <span className="font-semibold text-slate-500">Area:</span>
-                      <span className="text-slate-300">{alert.affected_area}</span>
+                      <span className="font-semibold text-zinc-500">Issuer:</span>
+                      <span className="text-zinc-300 font-medium">{alert.issuer}</span>
+                      <span className="text-zinc-600">·</span>
+                      <span className="font-semibold text-zinc-500">Area:</span>
+                      <span className="text-zinc-300">{alert.affected_area}</span>
                     </div>
 
                     <div className="flex items-center gap-3 self-end sm:self-auto">
                       {onSelectAlert && (
                         <button
                           onClick={() => onSelectAlert(alert)}
-                          className="text-sky-400 hover:text-sky-300 font-semibold text-xs inline-flex items-center gap-1 transition-colors"
+                          className="text-amber-400 hover:text-amber-300 font-semibold text-xs inline-flex items-center gap-1 transition-colors"
                         >
-                          <Eye className="w-3 h-3" />
+                          <Eye className="w-3.5 h-3.5" />
                           <span>Inspect Details</span>
                         </button>
                       )}
@@ -421,7 +426,7 @@ export const GlobalAlertsPanel: React.FC<GlobalAlertsPanelProps> = ({
                         href={alert.source_url}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="inline-flex items-center gap-1 text-slate-400 hover:text-slate-200 font-medium transition-colors"
+                        className="inline-flex items-center gap-1 text-zinc-400 hover:text-zinc-200 font-medium transition-colors"
                       >
                         <span>Official CAP</span>
                         <ExternalLink className="w-3 h-3" />
@@ -432,12 +437,12 @@ export const GlobalAlertsPanel: React.FC<GlobalAlertsPanelProps> = ({
               );
             })
           ) : (
-            <div className="p-8 rounded-2xl bg-[#060a14]/60 border border-white/[0.06] text-center space-y-2">
-              <Info className="w-6 h-6 text-sky-400 mx-auto" />
+            <div className="p-8 rounded-xl bg-[#0c0e13] border border-[#1e2330] text-center space-y-2 font-mono">
+              <Info className="w-6 h-6 text-amber-400 mx-auto" />
               <p className="text-sm font-semibold text-white">
                 No active official CAP weather warnings match current filter criteria.
               </p>
-              <p className="text-xs text-slate-400 max-w-lg mx-auto">
+              <p className="text-xs text-zinc-400 max-w-lg mx-auto">
                 {isFiltered
                   ? `There are currently no active WMO SWIC or Alert-Hub bulletins reported specifically for country ${selectedCountry || selectedLabel || "selected region"}.`
                   : "No official CAP warnings available."}
@@ -445,7 +450,7 @@ export const GlobalAlertsPanel: React.FC<GlobalAlertsPanelProps> = ({
               {isFiltered && (
                 <button
                   onClick={onToggleFilter}
-                  className="mt-2 inline-flex items-center gap-1 px-3.5 py-1.5 bg-sky-500/15 hover:bg-sky-500/25 text-sky-200 rounded-xl text-xs font-semibold border border-sky-500/30 transition-colors"
+                  className="mt-2 inline-flex items-center gap-1 px-3.5 py-1.5 bg-amber-500/15 hover:bg-amber-500/25 text-amber-200 rounded-lg text-xs font-semibold border border-amber-500/30 transition-colors"
                 >
                   <span>View All Global Alerts ({worldwideOfficialTotal.toLocaleString()} active)</span>
                   <ChevronRight className="w-3.5 h-3.5" />
@@ -469,30 +474,30 @@ export const GlobalAlertsPanel: React.FC<GlobalAlertsPanelProps> = ({
               return (
                 <div
                   key={disaster.id}
-                  className="p-4 sm:p-5 rounded-2xl bg-[#060a14]/80 border border-white/[0.06] hover:border-amber-500/30 transition-all duration-150 space-y-2.5"
+                  className="p-4 sm:p-5 rounded-xl bg-[#0c0e13] border border-[#1e2330] hover:border-amber-500/30 transition-all duration-150 space-y-2.5"
                 >
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                     <div className="flex items-center gap-2 flex-wrap">
-                      <div className="p-1.5 rounded-lg bg-[#060a14] border border-white/[0.08]">
+                      <div className="p-1.5 rounded bg-[#171b24] border border-[#252b3a]">
                         {getDisasterIcon(disaster.event)}
                       </div>
-                      <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-full bg-orange-500/20 text-orange-300 border border-orange-500/30">
+                      <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-orange-500/15 text-orange-300 border border-orange-500/30">
                         GDACS Disaster Intelligence
                       </span>
-                      <span className={`text-[11px] font-mono font-bold px-2.5 py-0.5 rounded-full ${getSeverityBadgeClass(disaster.severity)}`}>
+                      <span className={`text-[11px] font-mono font-bold px-2.5 py-0.5 rounded ${getSeverityBadgeClass(disaster.severity)}`}>
                         {disaster.severity}
                       </span>
                       {renderGeographicBadge(disaster.geographic_status)}
-                      <span className="text-xs font-bold text-white">{disaster.event}</span>
+                      <span className="text-xs font-bold text-white font-mono">{disaster.event}</span>
                       {disaster.country_code && (
-                        <span className="text-[11px] font-mono text-slate-400">
+                        <span className="text-[11px] font-mono text-zinc-400">
                           ({disaster.country_code})
                         </span>
                       )}
                     </div>
 
                     {disaster.distance_km !== undefined && disaster.distance_km !== null && (
-                      <div className="text-xs font-mono font-semibold text-amber-300 bg-amber-500/10 px-2.5 py-0.5 rounded-full border border-amber-500/25">
+                      <div className="text-xs font-mono font-semibold text-amber-300 bg-amber-500/10 px-2.5 py-0.5 rounded border border-amber-500/25">
                         ~{Math.round(disaster.distance_km).toLocaleString()} km from selected coordinate
                       </div>
                     )}
@@ -501,15 +506,15 @@ export const GlobalAlertsPanel: React.FC<GlobalAlertsPanelProps> = ({
                   <h4 className="text-sm font-bold text-white leading-snug">{disaster.headline}</h4>
 
                   {!isDescRedundant && (
-                    <p className="text-xs text-slate-300 leading-relaxed">{disaster.description}</p>
+                    <p className="text-xs text-zinc-300 leading-relaxed font-mono">{disaster.description}</p>
                   )}
 
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pt-2.5 border-t border-white/[0.06] text-[11px] text-slate-400">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pt-2.5 border-t border-[#1a1f2c] text-[11px] text-zinc-400 font-mono">
                     <div className="flex items-center gap-2">
-                      <span className="font-semibold text-slate-500">Location:</span>
-                      <span className="text-slate-300">{disaster.affected_area}</span>
+                      <span className="font-semibold text-zinc-500">Location:</span>
+                      <span className="text-zinc-300">{disaster.affected_area}</span>
                       {disaster.latitude && disaster.longitude && (
-                        <span className="font-mono text-slate-500">
+                        <span className="font-mono text-zinc-500">
                           [{disaster.latitude.toFixed(2)}°, {disaster.longitude.toFixed(2)}°]
                         </span>
                       )}
@@ -521,7 +526,7 @@ export const GlobalAlertsPanel: React.FC<GlobalAlertsPanelProps> = ({
                           onClick={() => onSelectAlert(disaster)}
                           className="text-amber-400 hover:text-amber-300 font-semibold text-xs inline-flex items-center gap-1 transition-colors"
                         >
-                          <Eye className="w-3 h-3" />
+                          <Eye className="w-3.5 h-3.5" />
                           <span>Inspect Details</span>
                         </button>
                       )}
@@ -529,7 +534,7 @@ export const GlobalAlertsPanel: React.FC<GlobalAlertsPanelProps> = ({
                         href={disaster.source_url}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="inline-flex items-center gap-1 text-slate-400 hover:text-slate-200 font-medium transition-colors"
+                        className="inline-flex items-center gap-1 text-zinc-400 hover:text-zinc-200 font-medium transition-colors"
                       >
                         <span>GDACS Report</span>
                         <ExternalLink className="w-3 h-3" />
@@ -540,18 +545,18 @@ export const GlobalAlertsPanel: React.FC<GlobalAlertsPanelProps> = ({
               );
             })
           ) : (
-            <div className="p-8 rounded-2xl bg-[#060a14]/60 border border-white/[0.06] text-center space-y-2">
+            <div className="p-8 rounded-xl bg-[#0c0e13] border border-[#1e2330] text-center space-y-2 font-mono">
               <Info className="w-6 h-6 text-amber-400 mx-auto" />
               <p className="text-sm font-semibold text-white">
                 No active GDACS multi-hazard disaster events in this spatial radius.
               </p>
-              <p className="text-xs text-slate-400 max-w-lg mx-auto">
+              <p className="text-xs text-zinc-400 max-w-lg mx-auto">
                 No major tropical cyclones, widespread floods, or earthquakes detected within search boundaries.
               </p>
               {isFiltered && (
                 <button
                   onClick={onToggleFilter}
-                  className="mt-2 inline-flex items-center gap-1 px-3.5 py-1.5 bg-amber-500/15 hover:bg-amber-500/25 text-amber-200 rounded-xl text-xs font-semibold border border-amber-500/30 transition-colors"
+                  className="mt-2 inline-flex items-center gap-1 px-3.5 py-1.5 bg-amber-500/15 hover:bg-amber-500/25 text-amber-200 rounded-lg text-xs font-semibold border border-amber-500/30 transition-colors"
                 >
                   <span>View All Global Disasters ({worldwideDisastersTotal.toLocaleString()} active)</span>
                   <ChevronRight className="w-3.5 h-3.5" />
@@ -563,10 +568,10 @@ export const GlobalAlertsPanel: React.FC<GlobalAlertsPanelProps> = ({
       )}
 
       {/* Transparent Coverage Limitation Notice */}
-      <div className="p-4 rounded-2xl bg-[#060a14]/80 border border-white/[0.06] text-[11px] text-slate-400 leading-relaxed flex items-start gap-2.5">
-        <Info className="w-4 h-4 text-sky-400 shrink-0 mt-0.5" />
+      <div className="p-4 rounded-xl bg-[#0c0e13] border border-[#1e2330] text-[11px] text-zinc-400 leading-relaxed flex items-start gap-2.5 font-mono">
+        <Info className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
         <div>
-          <strong className="text-slate-200">Data Integrity Notice on Emergency Bulletins:</strong> SkyGuard operates under strict zero-fabrication rules. An empty alert list for any location does <strong>NOT</strong> mean &quot;All Clear&quot; or &quot;No Danger&quot;. Not all domestic agencies publish active CAP feeds to international aggregators. For emergency directives in your territory, always verify official civil defense and national meteorological channels.
+          <strong className="text-zinc-200">Data Integrity Notice on Emergency Bulletins:</strong> SkyGuard operates under strict zero-fabrication rules. An empty alert list for any location does <strong>NOT</strong> mean &quot;All Clear&quot; or &quot;No Danger&quot;. Not all domestic agencies publish active CAP feeds to international aggregators. For emergency directives in your territory, always verify official civil defense and national meteorological channels.
         </div>
       </div>
     </div>

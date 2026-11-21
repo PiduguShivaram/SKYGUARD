@@ -7,75 +7,64 @@
 }
 
 body {
-  background-color: #06090e;
-  color: #f8fafc;
+  background-color: #0b0d10;
+  color: #f3f4f6;
   min-height: 100vh;
   font-feature-settings: "cv02", "cv03", "cv04", "cv11";
   background-image: 
-    radial-gradient(at 0% 0%, rgba(14, 165, 233, 0.07) 0px, transparent 50%),
-    radial-gradient(at 100% 0%, rgba(99, 102, 241, 0.05) 0px, transparent 50%),
-    radial-gradient(at 50% 100%, rgba(16, 185, 129, 0.04) 0px, transparent 50%);
+    radial-gradient(circle at 50% 0%, rgba(245, 158, 11, 0.03) 0%, transparent 60%),
+    linear-gradient(to right, rgba(255, 255, 255, 0.02) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(255, 255, 255, 0.02) 1px, transparent 1px);
+  background-size: 100% 100%, 40px 40px, 40px 40px;
   background-attachment: fixed;
 }
 
-/* Glassmorphism primitives */
-.glass-panel {
-  background: rgba(14, 22, 38, 0.72);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-  border: 1px solid rgba(255, 255, 255, 0.07);
-  box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.5), inset 0 1px 0 0 rgba(255, 255, 255, 0.05);
+/* Observatory Precision Panels */
+.deck-panel {
+  background: #11141a;
+  border: 1px solid #202530;
+  box-shadow: 0 4px 24px -2px rgba(0, 0, 0, 0.6), inset 0 1px 0 0 rgba(255, 255, 255, 0.04);
 }
 
-.glass-card {
-  background: rgba(14, 22, 38, 0.6);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  border: 1px solid rgba(255, 255, 255, 0.06);
-  box-shadow: 0 4px 16px -2px rgba(0, 0, 0, 0.4), inset 0 1px 0 0 rgba(255, 255, 255, 0.04);
+.deck-card {
+  background: #141822;
+  border: 1px solid #242a37;
+  box-shadow: 0 2px 10px -1px rgba(0, 0, 0, 0.4), inset 0 1px 0 0 rgba(255, 255, 255, 0.03);
   transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-.glass-card:hover {
-  border-color: rgba(56, 189, 248, 0.2);
-  box-shadow: 0 8px 24px -4px rgba(0, 0, 0, 0.6), inset 0 1px 0 0 rgba(255, 255, 255, 0.08);
+.deck-card:hover {
+  border-color: #3b4457;
+  box-shadow: 0 6px 18px -2px rgba(0, 0, 0, 0.5), inset 0 1px 0 0 rgba(255, 255, 255, 0.06);
 }
 
-.glass-input {
-  background: rgba(8, 13, 26, 0.85);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  box-shadow: inset 0 2px 4px 0 rgba(0, 0, 0, 0.4);
-  transition: all 0.15s ease-in-out;
+.deck-inset {
+  background: #0d0f14;
+  border: 1px solid #1c212c;
+  box-shadow: inset 0 2px 5px 0 rgba(0, 0, 0, 0.5);
 }
 
-.glass-input:focus {
-  border-color: rgba(56, 189, 248, 0.5);
-  box-shadow: 0 0 0 3px rgba(14, 165, 233, 0.2), inset 0 1px 2px 0 rgba(0, 0, 0, 0.3);
-}
-
-/* Custom scrollbars */
+/* Custom Scrollbars */
 ::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+  width: 5px;
+  height: 5px;
 }
 
 ::-webkit-scrollbar-track {
-  background: #080d1a;
+  background: #0b0d10;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #1e2c47;
-  border-radius: 9999px;
+  background: #242935;
+  border-radius: 4px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #2d426b;
+  background: #d97706;
 }
 
-/* Subtle data grid background */
-.bg-subtle-grid {
-  background-size: 32px 32px;
-  background-image: 
-    linear-gradient(to right, rgba(255, 255, 255, 0.02) 1px, transparent 1px),
-    linear-gradient(to bottom, rgba(255, 255, 255, 0.02) 1px, transparent 1px);
+/* Geodetic Grid Ticks */
+.geo-ticks {
+  background-image: radial-gradient(circle, rgba(255, 255, 255, 0.12) 1px, transparent 1px);
+  background-size: 16px 16px;
 }
