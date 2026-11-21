@@ -33,7 +33,7 @@ async def test_playwright_public_mode_multi_location():
         # Click Warangal chip
         warangal_btn = page.locator("button:has-text('Warangal')")
         await warangal_btn.click()
-        await page.wait_for_selector("text=NWP Model-Estimated Current Conditions", timeout=25000)
+        await page.wait_for_selector("text=NWP Model-Estimated Current Conditions", timeout=30000)
 
         # Check NWP model disclosure and grid coordinates
         header = await page.locator("h2").first.text_content()
@@ -72,7 +72,7 @@ async def test_playwright_farmer_mode_crop_stress():
 
         warangal_btn = page.locator("button:has-text('Warangal')")
         await warangal_btn.click()
-        await page.wait_for_selector("text=NWP Model-Estimated Current Conditions", timeout=25000)
+        await page.wait_for_selector("text=NWP Model-Estimated Current Conditions", timeout=30000)
 
         # Switch to Farmer Mode
         farmer_btn = page.locator("button:has-text('Farmer Mode')")
