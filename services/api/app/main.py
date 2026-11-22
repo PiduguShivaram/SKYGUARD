@@ -19,8 +19,14 @@ from services.api.app.services.vapid_service import get_or_create_vapid
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Initialize database tables and persistent VAPID keypair
-    await init_db()
-    get_or_create_vapid()
+    try:
+        await init_db()
+    except Exception as exc:
+        print(f"[Lifespan Notice] Database init deferred: {exc}")
+    try:
+        get_or_create_vapid()
+    except Exception as exc:
+        print(f"[Lifespan Notice] VAPID init deferred: {exc}")
     yield
 
 

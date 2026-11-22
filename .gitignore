@@ -48,3 +48,5 @@ design/references/screenshots/
 *.mp4
 *.webp
 
+.vercel
+.env*

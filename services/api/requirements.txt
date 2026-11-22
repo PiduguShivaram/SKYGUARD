@@ -10,6 +10,7 @@ cryptography==50.0.2
 sqlalchemy==2.1.9
 greenlet==3.5.6
 aiosqlite==0.22.1
+asyncpg==0.30.0
 shapely==2.2.0
 joblib==1.6.0
 numpy==2.5.5

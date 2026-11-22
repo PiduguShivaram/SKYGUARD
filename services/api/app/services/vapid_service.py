@@ -27,7 +27,10 @@ def get_or_create_vapid() -> Tuple[Vapid, str]:
     # Determine key file path
     key_path = Path(settings.VAPID_KEY_FILE)
     if not key_path.is_absolute():
-        key_path = Path(__file__).resolve().parent.parent / settings.VAPID_KEY_FILE
+        if os.environ.get("VERCEL") or os.environ.get("AWS_LAMBDA_FUNCTION_NAME"):
+            key_path = Path("/tmp") / settings.VAPID_KEY_FILE
+        else:
+            key_path = Path(__file__).resolve().parent.parent / settings.VAPID_KEY_FILE
 
     vapid = None
 
