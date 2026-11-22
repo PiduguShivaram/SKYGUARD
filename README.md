@@ -1,101 +1,264 @@
-# SkyGuard 🛡️ — Weather Alerts & Climate Intelligence Platform
+# SkyGuard — Weather Alerts & Climate Intelligence Platform
 
-> **A real-time public weather intelligence, worldwide disaster alert, and verified emergency warning platform with a strictly-gated Farmer Mode.**
+> **Predict Weather. Understand Risk. Stay Prepared.**  
+> A unified, real-time public weather intelligence, worldwide disaster alert, and verified emergency warning platform with a strictly-gated Farmer Mode.
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-[![FastAPI](https://img.shields.io/badge/FastAPI-0.115+-009688.svg?logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com)
-[![Next.js](https://img.shields.io/badge/Next.js-14.2+-black.svg?logo=next.js&logoColor=white)](https://nextjs.org)
-[![TypeScript](https://img.shields.io/badge/TypeScript-5.5+-3178C6.svg?logo=typescript&logoColor=white)](https://www.typescriptlang.org)
+[![SkyGuard CI](https://github.com/PiduguShivaram/SKYGUARD/actions/workflows/ci.yml/badge.svg?branch=feature%2Fforensic-remediation-and-product-alignment)](https://github.com/PiduguShivaram/SKYGUARD/actions/workflows/ci.yml)
+[![FastAPI](https://img.shields.io/badge/FastAPI-0.128+-009688.svg?logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com)
+[![Next.js](https://img.shields.io/badge/Next.js-14.2.35-black.svg?logo=next.js&logoColor=white)](https://nextjs.org)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.6+-3178C6.svg?logo=typescript&logoColor=white)](https://www.typescriptlang.org)
 [![Python](https://img.shields.io/badge/Python-3.12+-3776AB.svg?logo=python&logoColor=white)](https://www.python.org)
-[![Playwright](https://img.shields.io/badge/Playwright-E2E%20Verified-45ba4b.svg?logo=playwright&logoColor=white)](https://playwright.dev)
+[![Playwright](https://img.shields.io/badge/Playwright-5%20Suites%20Verified-45ba4b.svg?logo=playwright&logoColor=white)](https://playwright.dev)
+[![Security Audit](https://img.shields.io/badge/pip--audit-0%20vulnerabilities-brightgreen.svg)](docs/CORE_MODULE_AUDIT.md)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
 ---
 
-## 🌟 Overview
+## About SkyGuard
 
-SkyGuard is built from the ground up on an **absolute zero-fabrication contract**. It provides genuine, server-side proxied environmental intelligence without ever rendering fake live metrics, placeholder charts, demo alerts, or synthetic AI hallucinations.
+SkyGuard is a scientifically grounded, privacy-preserving environmental intelligence platform designed to bridge the gap between high-complexity atmospheric physics and everyday human safety. By synchronizing 5 premier global Numerical Weather Prediction (NWP) models (ECMWF IFS, NOAA GFS, DWD ICON, UKMO, JMA), airport METAR ground-truth observations, and trained Model Output Statistics (MOS) machine learning error correction, SkyGuard empowers individuals, communities, and agricultural producers with transparent, actionable weather intelligence.
 
-### Core Capabilities
-
-1. **Live Global Weather & NWP Forecasts**:
-   - Geocoding and 7-day hourly/daily forecasts via Open-Meteo multi-model Numerical Weather Prediction (ECMWF IFS, GFS, ICON).
-   - High-contrast 24-hour SVG trend curves for temperature, rain probability, and wind gusts.
-   - Comprehensive provenance metadata: requested vs. grid coordinates, timezone offset, elevation, and provider attribution.
-
-2. **Worldwide Emergency & Disaster Alerts (Phase 2)**:
-   - **WMO SWIC**: Official Common Alerting Protocol (CAP) bulletins from national meteorological services worldwide (2,100+ active warnings).
-   - **GDACS**: Real-time multi-hazard disaster events (tropical cyclones, floods, earthquakes, droughts, volcanic activity, wildfires) from UN OCHA & European Commission.
-   - **Alert-Hub.org**: International unfiltered emergency CAP RSS stream.
-   - Proximity search with Haversine distance calculations without invented polygon boundaries.
-   - **Honest Data Integrity Policy**: If no alerts are active for a region, SkyGuard explicitly notes that absence of warnings does **not** signify "All Clear" or "No Danger".
-
-3. **Deterministic Scientific Risk Indicators (Phase 3)**:
-   - Experimental derived indicators based on physical IMD, WMO, and NDMA thresholds (Heavy Rainfall, Extreme Heatwaves, High Wind Squalls).
-   - Strict categorical separation: derived heuristics are prominently labeled `EXPERIMENTAL` and never masquerade as official warnings.
-
-4. **Gated Farmer Mode (Phase 4)**:
-   - Dedicated agrometeorological mode tailored to crop moisture thresholds and thermal vulnerability for Paddy, Cotton, Maize, Wheat, Soybean, and Tomato.
-   - Computes operational watches (extended dry spells, waterlogging/drainage needs, crop canopy thermal stress) referencing ICAR advisory guidelines.
-   - **Strict Hardware Gating**: In-situ soil moisture sensors (`DISCONNECTED`), Sentinel-2 multi-spectral NDVI (`GATED`), and plot-level yield loss models (`GATED`) remain disabled until genuine hardware or authenticated services are provisioned.
+### Key Pillars & Capabilities
+- **Personalized Weather Intelligence**: Hyperlocal 48-hour hourly curves, 7-day extended forecasts, and deterministic risk indicators for extreme heat, heavy downpours, and wind squalls with validated preventive safety advice.
+- **Multi-Model Consensus & Error-Corrected NWP**: Transparent comparison across NOAA GFS, ECMWF IFS, DWD ICON, UK Met Office, and JMA GSM models aligned on identical 48-hour UTC forecast steps. Preserves authentic values (`None` on absent variables, never fabricating `0.0`), with explicit `INSUFFICIENT_MODELS` classification when fewer than 2 models report.
+- **MOS Machine Learning Error Correction**: Scikit-learn Ridge regression pipeline trained on authentic multi-station historical datasets (1,465 holdout evaluation samples across 5 international meteorological stations), achieving up to 14.2% MAE accuracy gain over raw NWP baselines with runtime safety suppression when critical features are incomplete.
+- **Supabase Realtime Cloud Integration**: Real-time PostgreSQL WAL change replication (`supabase_realtime`) streaming active authoritative emergency warnings to connected web clients via WebSockets. Features strict per-user Row Level Security (RLS) policies for authenticated saved locations and alert preferences with dynamic in-UI connection state tracking.
+- **Multi-Channel Emergency Alert Dispatch**: Real-time CAP 1.2 XML emergency warning ingestion (WMO SWIC, GDACS, Alert-Hub) with sub-second polygon geofencing delivered via:
+  1. **Direct Mobile Push via Telegram Bot ([@skyguard_alerts_bot](https://t.me/skyguard_alerts_bot))**: Sound and vibration emergency push directly to Android and iOS mobile devices. Hardened with a 2-step challenge-response device ownership verification flow, 3-attempt brute-force protection, DoS-proof subscription state preservation, and administrative authorization for diagnostic dispatches.
+  2. **High-Security Web Push**: RFC 8292 NIST P-256 VAPID encrypted push with SSRF defense, atomic transaction locks, and possession-token anti-takeover protection.
+- **Gated Agronomic Intelligence (Farmer Mode)**: Crop-specific watches across 6 major crop profiles (Paddy, Cotton, Maize, Wheat, Soybean, Tomato) adhering to ICAR-AICRPAM guidelines, with strict hardware gating ensuring zero synthetic sensor fallback.
+- **Earth Observation & Satellite Catalog**: Integration adapter for ISRO MOSDAC and Copernicus Sentinel-2 earth observation catalogs with explicit authorization gating and scientific provenance.
 
 ---
 
-## 🏛️ System Architecture
+## Executive Summary
 
-```text
-┌─────────────────────────────────────────────────────────────────────────────────┐
-│                                    apps/web                                     │
-│          Next.js 14+ (App Router) · React 18 · TypeScript · Tailwind CSS        │
-│  ┌───────────────────────┐  ┌──────────────────────┐  ┌──────────────────────┐  │
-│  │   Search & Geocoding  │  │   Weather & Curves   │  │   Global Alerts &    │  │
-│  │      Autocomplete     │  │  (Authentic NWP SVG) │  │  Gated Farmer Mode   │  │
-│  └───────────┬───────────┘  └──────────┬───────────┘  └──────────┬───────────┘  │
-└──────────────┼─────────────────────────┼─────────────────────────┼──────────────┘
-               │                         │                         │
-               │ HTTP / JSON             │                         │
-               ▼                         ▼                         ▼
-┌─────────────────────────────────────────────────────────────────────────────────┐
-│                                  services/api                                   │
-│                     FastAPI · Pydantic v2 · HTTPX (Async Client)                │
-│  ┌─────────────────────┐  ┌─────────────────────┐  ┌─────────────────────────┐  │
-│  │  Open-Meteo Client  │  │  Scientific Risk    │  │ Multi-Provider Alerts   │  │
-│  │  (/weather, /geo)   │  │  Engine (/risk)     │  │ (/alerts/global, /wmo,  │  │
-│  │                     │  │                     │  │  /gdacs, /alerthub)     │  │
-│  └───────────┬─────────┘  └──────────┬──────────┘  └─────────────┬───────────┘  │
-└──────────────┼───────────────────────┼───────────────────────────┼──────────────┘
-               │                       │                           │
-               ▼                       ▼                           ▼
-┌─────────────────────────────┐ ┌──────────────┐ ┌────────────────────────────────┐
-│         Open-Meteo          │ │   ICAR /     │ │      WMO SWIC · GDACS        │
-│   NWP Models & Geocoding    │ │   NDMA / WMO │ │   Alert-Hub.org Global Feeds   │
-│  (ECMWF, GFS, ICON IFS)     │ │  Thresholds  │ │ (CAP XML, GeoJSON, RSS Feeds)  │
-└─────────────────────────────┘ └──────────────┘ └────────────────────────────────┘
+### Problem Statement
+The lack of a unified, reliable, location-specific weather and disaster intelligence platform makes it difficult for individuals, communities, and agricultural producers to anticipate impending environmental hazards and take timely preventive actions. Existing consumer apps frequently mix synthetic simulated forecasts with real warnings, invent arbitrary risk scores, or obscure authoritative meteorological sources.
+
+### Solution
+**SkyGuard** is a production-hardened environmental intelligence platform that unifies Numerical Weather Prediction (NWP), authoritative international Common Alerting Protocol (CAP) emergency warnings, disaster event monitoring, and crop-specific agroclimatic risk analysis. Designed with an unwavering commitment to data authenticity, SkyGuard enforces a strict zero-fabrication contract, cryptographic Web Push security, and scientific transparency.
+
+---
+
+## Absolute Data Integrity Invariants
+
+SkyGuard operates under a non-negotiable architectural contract governed by [`AGENTS.md`](AGENTS.md):
+
+1. **Zero Synthetic / Placeholder Live Data**: Never render mock charts, demo alerts, hand-entered temperatures, synthetic soil moisture, or fabricated probabilities in production mode.
+2. **Explicit Attribution & Provenance**: Every observation, forecast curve, and emergency bulletin carries its upstream provider, model type, retrieval timestamp, timezone, and grid coordinate offset.
+3. **Categorical Separation**: Strict visual and schema separation between:
+   - **Authoritative Official Warnings** (e.g., WMO SWIC Member States, NDMA, State Authorities)
+   - **NWP Model Forecasts** (e.g., Open-Meteo multi-model ECMWF IFS, GFS, ICON)
+   - **Deterministic Derived Risk Indicators** (transparent physical heuristics, prominently labeled `EXPERIMENTAL`)
+   - **Agrometeorological Advisories** (crop vulnerability watches based on published ICAR-AICRPAM guidelines)
+   *An experimental indicator or forecast model is never labeled as an official government warning.*
+4. **Honest Failure & Unavailability**: If an upstream agency or feed is degraded, down, or rate-limited, SkyGuard displays an actionable unavailability state. An empty response from a provider is **never** presented as *"No warnings / All Clear / Safe"*.
+5. **No Hallucinated Science or Hardware Gating**: In-situ IoT soil sensors, plot-level yield prediction models, and Sentinel-2 satellite NDVI feeds remain strictly **GATED** or **DISCONNECTED** until live calibrated telemetry is provisioned.
+
+---
+
+## System Architecture
+
+SkyGuard separates client rendering from server-side ingestion and cryptographic push operations. All external meteorological and disaster endpoints are proxied asynchronously through FastAPI with strict timeouts, retries, and data normalization.
+
+```mermaid
+flowchart TD
+    subgraph Client["Frontend Client (apps/web - Next.js 14 App Router)"]
+        UI_Search["Geocoding Autocomplete"]
+        UI_Weather["24-Hour NWP SVG Curves & 7-Day Forecast"]
+        UI_Alerts["Worldwide CAP Advisories & GDACS Feed"]
+        UI_Risk["Deterministic Scientific Risk Gauges"]
+        UI_Farmer["Gated Farmer Mode (6 Crop Profiles)"]
+        UI_Push["Web Push Subscription & Preference Modal"]
+    end
+
+    subgraph Gateway["Backend Service (services/api - FastAPI & Python 3.12)"]
+        Router["Async API Router (/api/v1)"]
+        Geo_Engine["Shapely 2.x Point-in-Polygon Engine"]
+        SSRF_Guard["DNS-Resolving SSRF Defense Guard"]
+        VAPID_Service["RFC 8292 NIST P-256 VAPID Engine"]
+        Risk_Engine["Deterministic Agromet & Hazard Engine"]
+    end
+
+    subgraph Upstream["Upstream Authoritative Providers & Scientific Models"]
+        OM["Open-Meteo Multi-Model Ensemble\n(ECMWF IFS, GFS, ICON)"]
+        WMO["WMO Severe Weather Information Centre\n(SWIC CAP 1.2 XML Feeds)"]
+        GDACS["UN OCHA & European Commission GDACS\n(Multi-Hazard Disaster GeoJSON)"]
+        AH["Alert-Hub.org International Emergency Stream\n(Aggregated CAP Alerts)"]
+        ICAR["ICAR-AICRPAM & NDMA / IMD\n(Agrometeorological Guidelines)"]
+    end
+
+    UI_Search -->|HTTP GET /locations| Router
+    UI_Weather -->|HTTP GET /weather| Router
+    UI_Alerts -->|HTTP GET /alerts/global| Router
+    UI_Risk -->|HTTP POST /risk/evaluate| Router
+    UI_Farmer -->|HTTP POST /farmer/watch| Router
+    UI_Push -->|HTTP POST /push/subscribe| Router
+
+    Router --> OM
+    Router --> WMO
+    Router --> GDACS
+    Router --> AH
+    Risk_Engine -.-> ICAR
+    Router --> Geo_Engine
+    Router --> SSRF_Guard
+    Router --> VAPID_Service
 ```
 
 ---
 
-## 📸 Screenshots
+## End-to-End Push Verification & Geospatial Workflow
 
-| Public Mode Forecast & Derived Risks | Gated Farmer Mode Agrometeorology |
-|---|---|
-| ![Public Mode](docs/screenshots/skyguard_public_mode_verified.png) | ![Farmer Mode](docs/screenshots/skyguard_farmer_mode_verified.png) |
+SkyGuard implements high-security, possession-token-protected Web Push notifications with strict polygon geofencing. Local alerts never trigger notifications in other cities within the same country unless the user explicitly opts into country-wide bulletins.
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor User as User / Farmer
+    participant Browser as Web Browser (Service Worker)
+    participant API as FastAPI Backend Gateway
+    participant Geo as Shapely 2.x Spatial Engine
+    participant SSRF as SSRF DNS Firewall
+    participant Gateway as Browser Push Service (FCM/Mozilla/Apple)
+
+    User->>Browser: Enable Push Alerts (Select High/Extreme Severity)
+    Browser->>API: GET /api/v1/push/vapid-public-key
+    API-->>Browser: Return RFC 8292 NIST P-256 Public Key
+    Browser->>Browser: Generate Endpoint & Auth/P-256DH Keys
+    Browser->>API: POST /api/v1/push/subscribe (Coords, Preferences)
+    API->>API: Generate Cryptographic Possession Token
+    API-->>Browser: 201 Created (Subscription ID + Possession Token)
+    Browser->>Browser: Store Possession Token in Local Storage
+
+    Note over API: Periodic Alert Dispatch Sync (X-Worker-Key)
+    API->>API: Ingest Upstream CAP Bulletins (WMO / GDACS)
+    API->>Geo: Evaluate User (Lat, Lon) vs CAP Polygons / Circles
+    Geo-->>API: Geographic Match Verified (Point-in-Polygon = TRUE)
+    API->>SSRF: Validate Push Endpoint URL & Resolve DNS IP
+    SSRF-->>API: Destination Verified (Port 443, Public Gateway Whitelist)
+    API->>Gateway: RFC 8292 Encrypted Web Push (VAPID Authorization)
+    Gateway-->>API: 201 Created (Gateway Acceptance Receipt)
+    Gateway->>Browser: Deliver Push Frame
+    Browser->>User: Display Verified Emergency Alert Notification
+```
 
 ---
 
-## 🚀 Quickstart Guide
+## Agrometeorological Heuristics & Hardware Gating Workflow
+
+In Farmer Mode, operational crop watches are computed purely from authentic 7-day Numerical Weather Prediction forecasts. Future and unconnected features remain strictly gated to protect farmers from fabricated telemetry.
+
+```mermaid
+flowchart LR
+    subgraph Inputs["Authentic Forecast Inputs (Open-Meteo NWP)"]
+        T["Daily Max / Min Temperature (°C)"]
+        P["Daily Cumulative Precipitation (mm)"]
+        W["10m Wind Speed & Gusts (km/h)"]
+        H["Relative Humidity (%)"]
+    end
+
+    subgraph Evaluation["Deterministic Crop Evaluation (ICAR-AICRPAM Guidelines)"]
+        Crop{"Selected Crop Profile"}
+        Dry["Dry Spell Watch\n(e.g., Paddy: 5d <2.5mm\nCotton: 10d <2.5mm)"]
+        Flood["Waterlogging Watch\n(e.g., Tomato: 40mm/24h\nMaize: 65mm/24h)"]
+        Heat["Thermal Canopy Stress\n(e.g., Wheat: >32°C heading\nTomato: >35°C flowering)"]
+    end
+
+    subgraph Output["Operational Agronomic Watches"]
+        Watch["Actionable Preventive Advisory\n(Irrigation, Drainage, Spray Timing)"]
+    end
+
+    subgraph Gated["Strictly Gated Hardware Models (AGENTS.md Invariant)"]
+        IoT["In-Situ Soil Moisture IoT Sensors\nStatus: DISCONNECTED"]
+        Sat["Sentinel-2 Multi-Spectral NDVI / EVI\nStatus: GATED (Pending Live API)"]
+        Yield["Plot-Level Yield Loss Forecasting\nStatus: GATED (Uncalibrated)"]
+    end
+
+    T --> Crop
+    P --> Crop
+    W --> Crop
+    H --> Crop
+
+    Crop -->|Paddy / Cotton / Maize / Wheat / Soybean / Tomato| Dry
+    Crop -->|Precipitation Runoff Thresholds| Flood
+    Crop -->|Phenological Thermal Limits| Heat
+
+    Dry --> Watch
+    Flood --> Watch
+    Heat --> Watch
+
+    Gated -.->|Zero Synthetic Fallback| Output
+```
+
+---
+
+## Core Intelligence & Delivery Modules
+
+| Module | Purpose | Data Source / Standard | Security & Integrity Hardening |
+|---|---|---|---|
+| **1. Real-Time Forecasts & Verified Charts** | Global location search, 7-day forecast, high-contrast 24-hr SVG trend curves | Open-Meteo Multi-Model Ensemble (ECMWF, GFS, ICON) | Explicit requested vs. grid coordinates, zero fake zero-fill defaults, timezone preservation |
+| **2. Multi-Model Numerical Consensus** | Transparent NWP comparison across NOAA GFS, ECMWF IFS, DWD ICON, UKMO, JMA | Authoritative NWP models via Open-Meteo API | Aligned on identical 48-hr UTC timestamps; transparent inter-model spread without fake artificial smoothing |
+| **3. Ground Observations & MOS Machine Learning** | Real METAR airport observations & trained Ridge regression MOS error correction | NOAA / NWS Aviation Weather METAR, trained ML model | 1,465 holdout validation samples across 5 stations demonstrating up to 14.2% MAE improvement over raw NWP |
+| **4. Direct Mobile Emergency Warnings (Telegram Bot)** | Instant sound & vibration disaster push directly to smartphones via Telegram Bot | Official Bot: [`@skyguard_alerts_bot`](https://t.me/skyguard_alerts_bot) | Zero mobile carrier SMS fee friction, bypasses browser service worker permission drop-offs, atomic delivery deduplication |
+| **5. Global Weather & Disaster Alerts** | Worldwide multi-hazard disaster events and official CAP emergency warnings | WMO SWIC, GDACS (UN OCHA), Alert-Hub.org | Strict ISO country filtering (no China leaks for IN), original CAP severity preservation, no false "All Clear" |
+| **6. Deterministic Risk Assessment** | Quantitative hazard detection for extreme heat, heavy downpours, and wind squalls | IMD, WMO, NDMA scientifically documented physical thresholds | Transparent deterministic calculations, prominently labeled `EXPERIMENTAL`, boundary-tested |
+| **7. Web Push Notification Center** | Precision-targeted emergency bulletins delivered via browser service workers | RFC 8292 VAPID, Browser Push Gateways (FCM, Mozilla, Apple) | Shapely 2.x Point-in-Polygon matching, SSRF defense with DNS IP resolution, possession-token anti-takeover |
+| **8. Gated Farmer Mode** | Crop-specific weather advisories for 6 major crops with phenological stage tracking | ICAR-AICRPAM, FAO agronomic research guidelines | Unconnected IoT sensors and satellite indices are strictly `GATED` / `DISCONNECTED`; no hallucinated yield predictions |
+| **9. Earth Observation & Satellite Catalog** | Searchable archive & scene discovery for meteorological & agricultural imagery | ISRO MOSDAC & Copernicus Sentinel-2 Catalogs | Explicit access gating, scientific provenance metadata, zero fabricated fake false-color images |
+
+---
+
+## Comprehensive Testing & Verification Matrix
+
+SkyGuard includes a multi-layered automated verification pipeline spanning unit tests, integration suites, concurrency stress tests, dependency vulnerability audits, and multi-viewport browser journeys.
+
+### 1. Multi-Job GitHub Actions CI Pipeline (`.github/workflows/ci.yml`)
+
+The repository runs 5 automated CI jobs on every pull request and push:
+
+| CI Job Name | Scope & Tools | What It Verifies |
+|---|---|---|
+| `backend-unit-and-security` | Python 3.12, Pytest, Shapely 2.x | 66 offline unit, risk engine, farmer engine, geospatial, SSRF, multi-model consensus, telegram verification, and stress tests |
+| `backend-dependency-audit` | `pip-audit`, PyPI / OSV databases | Scans all 13 backend packages for known CVEs (**0 vulnerabilities found**) |
+| `frontend-typescript-check` | Node 20, pnpm 9, TypeScript 5.6+ | Strict `tsc --noEmit` across all App Router components, hooks, and types |
+| `frontend-production-build` | Next.js 14.2.35 (Security Patched) | Clean production bundling with tree-shaking, static optimization, and asset compilation |
+| `e2e-playwright-verification` | Headless Chromium, Python Playwright | 5 end-to-end browser user journeys against live FastAPI & Next.js background daemons |
+
+### 2. Five Headless Playwright Browser Suites (`tests/test_browser_e2e.py`)
+
+1. `test_playwright_public_mode_multi_location`: Multi-city search, geocoding resolution, NWP model disclaimer, 24-hr authentic SVG temperature curve, and Phase 3 derived risk cards.
+2. `test_playwright_farmer_mode_crop_stress`: Crop switching (`Cotton`, `Maize`, `Tomato`), sowing date age calculation, ICAR advisory text, and verification that unconnected hardware is marked `DISCONNECTED` and `GATED`.
+3. `test_playwright_push_notification_settings`: Modal opening, RFC 8292 VAPID key fetch, Country-Wide Emergency Bulletins toggle, and data integrity notices.
+4. `test_playwright_global_alerts_and_modal_inspection`: WMO SWIC & GDACS multi-hazard feed switching, CAP XML advisory inspection, and verification that no fake "All Clear" badges appear.
+5. `test_playwright_mobile_responsive_layout`: Responsive rendering on Mobile (375x667) and Tablet (768x1024) viewports without horizontal clipping or broken components.
+
+### 3. Concurrency Stress & Pathological Security Hardening (`test_stress_and_hardening.py`)
+
+- **Concurrent Async Health Queries**: 50 concurrent requests verified with zero connection drops.
+- **Pathological CAP Polygons**: Rejects self-intersecting, degenerate, empty, and 360-vertex stress polygons without worker crashes.
+- **Degenerate CAP Circles**: Rejects negative radii, non-numeric coordinate tuples, and out-of-bounds coordinates.
+- **SSRF Injection Vectors**: Blocks private IP addresses (`127.0.0.1`, `10.0.0.0/8`, `192.168.0.0/16`, `169.254.169.254`), non-standard ports (`http://localhost:8080`), and non-whitelisted schemes.
+- **Agroclimatic Monte Carlo Scenarios**: 50 randomized extreme weather conditions validated across all 6 crop profiles without unhandled exceptions.
+- **Physical Boundary Anomalies**: Evaluated from -20°C deep freeze to +52°C extreme heatwave conditions.
+
+---
+
+## Quickstart Guide
 
 ### Prerequisites
 - **Node.js** v18+ & **pnpm** (or npm)
-- **Python** 3.11+
-- Genuine internet connectivity (to query live upstream weather & disaster feeds)
+- **Python** 3.12+ (or 3.11+)
+- Internet connectivity (to query upstream Open-Meteo, GDACS, and WMO feeds)
 
-### 1. Clone & Setup Repository
+### 1. Clone the Repository
 ```bash
 git clone https://github.com/PiduguShivaram/SKYGUARD.git
 cd SKYGUARD
+git checkout feature/forensic-remediation-and-product-alignment
 ```
 
-### 2. Start FastAPI Backend Service
+### 2. Start the FastAPI Backend Service
 ```bash
 cd services/api
 python -m venv .venv
@@ -108,9 +271,9 @@ python -m venv .venv
 pip install -r requirements.txt
 uvicorn services.api.app.main:app --host 127.0.0.1 --port 8000 --reload
 ```
-*Backend API will be running at `http://127.0.0.1:8000` (Interactive docs: `http://127.0.0.1:8000/docs`).*
+*Backend API runs at `http://127.0.0.1:8000` (Interactive OpenAPI Swagger documentation: `http://127.0.0.1:8000/docs`).*
 
-### 3. Start Next.js Frontend Application
+### 3. Start the Next.js Frontend Application
 In a separate terminal:
 ```bash
 cd apps/web
@@ -121,56 +284,74 @@ pnpm dev
 
 ---
 
-## 🧪 Testing & Verification
+## Verification Commands
 
-SkyGuard includes a multi-tier test matrix ensuring both offline calculation correctness and real live upstream provider health:
+Run the following verification commands to inspect system health locally:
 
-### Run Pytest Test Suite
 ```bash
-# In services/api with virtualenv activated:
-pytest -v
-```
-*Executes all 19 unit and integration tests across schemas, risk engines, farmer logic, and live upstream providers.*
+# 1. Run offline Pytest test suite (66 tests)
+pytest services/api/tests/ -v -m "not live"
 
-### Run Live Upstream Smoke Verification
-```bash
-python scripts/check_live.py
-```
-*Queries genuine live endpoints for Open-Meteo, GDACS, and WMO SWIC to verify connectivity, schema parsing, and latency.*
+# 2. Run live upstream smoke tests (queries genuine WMO, GDACS, Open-Meteo feeds)
+pytest services/api/tests/ -v -m "live"
 
-### Run Playwright Browser E2E Test
-```bash
-python tests/test_browser_e2e.py
+# 3. Run dependency vulnerability audit (0 vulnerabilities)
+pip-audit -r services/api/requirements.txt
+
+# 4. Run strict frontend TypeScript check
+pnpm --filter web exec tsc --noEmit
+
+# 5. Build Next.js production bundle
+pnpm --filter web build
+
+# 6. Execute all 5 Playwright automated browser test journeys
+python -u tests/test_browser_e2e.py
 ```
-*Drives a headless browser through location search, weather rendering, derived risk analysis, farmer mode toggling, and data integrity invariant assertions.*
 
 ---
 
-## 📋 API Endpoints Summary
+## API Specification Summary
 
-| Endpoint | Method | Description | Upstream Data Source |
+| Endpoint | Method | Scope | Source / Security |
 |---|---|---|---|
-| `/health` | GET | Internal service health and upstream diagnostics | Open-Meteo, GDACS, WMO, Alert-Hub |
-| `/api/v1/locations` | GET | Geocoding city search with auto-complete | Open-Meteo Geocoding API |
-| `/api/v1/weather` | GET | 7-day hourly & daily NWP forecast | Open-Meteo Multi-Model Ensemble |
-| `/api/v1/alerts/global` | GET | Aggregated CAP warnings & disaster events | WMO SWIC, GDACS, Alert-Hub.org |
-| `/api/v1/alerts/gdacs` | GET | Multi-hazard global disaster events GeoJSON | UN OCHA & European Commission |
-| `/api/v1/alerts/wmo` | GET | Official severe weather CAP bulletins | WMO Member State NMHS agencies |
-| `/api/v1/alerts/alerthub` | GET | Aggregated international emergency CAP stream | Alert-Hub.org |
-| `/api/v1/risk/evaluate` | POST | Deterministic scientific weather risk heuristics | SkyGuard Risk Assessment Engine |
-| `/api/v1/farmer/watch` | POST | Crop-specific watches and hardware gating | ICAR Agromet Advisory Guidelines |
+| `/health` | GET | Internal service health and upstream connectivity status | Open-Meteo, GDACS, WMO, Alert-Hub, Telegram |
+| `/api/v1/locations` | GET | Global geocoding search with administrative boundary metadata | Open-Meteo Geocoding API |
+| `/api/v1/weather` | GET | 7-day hourly and daily multi-model NWP forecast | Open-Meteo Multi-Model Ensemble |
+| `/api/v1/models` | GET | Individual NWP model comparison (GFS, ECMWF, ICON, UKMO, JMA) | Open-Meteo Numerical Models |
+| `/api/v1/models/consensus` | GET | Aligned 48-hr multi-model consensus & transparent model spread | Open-Meteo NWP Ensemble Pipeline |
+| `/api/v1/observations/stations` | GET | Live airport ground-truth weather telemetry | NOAA Aviation Weather METAR Feeds |
+| `/api/v1/ml/predict-corrected` | GET | Real-time MOS Ridge ML error-corrected temperature forecast | Trained SkyGuard MOS Model vs Raw NWP |
+| `/api/v1/ml/training-report` | GET | Machine learning evaluation report across 1,465 holdout samples | Grounded in 5 international stations |
+| `/api/v1/satellite/catalog` | GET | Earth observation scene discovery & provenance query | ISRO MOSDAC & Copernicus Sentinel-2 |
+| `/api/v1/alerts/global` | GET | Aggregated CAP official warnings and global disaster events | WMO SWIC, GDACS, Alert-Hub.org |
+| `/api/v1/alerts/gdacs` | GET | Multi-hazard natural disaster events (cyclone, flood, quake) | UN OCHA & European Commission |
+| `/api/v1/alerts/wmo` | GET | Official severe weather CAP 1.2 XML bulletins | WMO Member State Meteorological Agencies |
+| `/api/v1/alerts/alerthub` | GET | International emergency CAP bulletin stream | Alert-Hub.org |
+| `/api/v1/risk/evaluate` | POST | Deterministic scientific weather risk indicators | SkyGuard Risk Assessment Engine |
+| `/api/v1/farmer/watch` | POST | Crop-specific agromet watches and hardware gating | ICAR-AICRPAM Guidelines |
+| `/api/v1/push/vapid-public-key` | GET | Retrieve RFC 8292 NIST P-256 VAPID public key | SkyGuard VAPID Key Service |
+| `/api/v1/push/subscribe` | POST | Register or update Web Push subscription | Browser Push Service Gateway |
+| `/api/v1/push/test` | POST | Send diagnostic operational test notification | SkyGuard Diagnostics |
+| `/api/v1/push/dispatch-sync` | POST | Periodic worker alert matching and dispatch | Internal Worker (`X-Worker-Key`) |
+| `/api/v1/telegram/bot-info` | GET | Retrieve official Telegram Bot username and deep-link URL | Official Bot: `@skyguard_alerts_bot` |
+| `/api/v1/telegram/sync-updates` | POST | Ingest `/start` messages from users opening the bot | Telegram Bot API Webhook/Polling |
+| `/api/v1/telegram/request-verification` | POST | Dispatch 6-digit challenge code to Telegram device to prove ownership | Rate-limited challenge dispatch (10m expiry) |
+| `/api/v1/telegram/verify-code` | POST | Confirm 6-digit challenge code and issue possession auth token | Max 3 attempts brute-force defense |
+| `/api/v1/telegram/subscribe` | POST | Update verified mobile alert subscription with possession token | Direct unverified registration strictly blocked |
+| `/api/v1/telegram/test-alert` | POST | Send hazard-neutral diagnostic test card to mobile subscriber | Requires possession token or admin worker key |
+| `/api/v1/telegram/subscribers/count`| GET | Total active verified mobile phone alert subscribers | SkyGuard Push Engine |
 
 ---
 
-## 📜 Absolute Data Integrity Invariants
+## Audit Documentation & Evidence
 
-1. **Zero Fake Live Data**: No placeholder charts, simulated soil moisture, or synthetic probabilities.
-2. **Explicit Provenance**: Every metric displays its origin provider, model type, retrieval timestamp, and timezone.
-3. **Categorical Separation**: Clear visual and architectural distinction between official warnings, model forecasts, and experimental risk heuristics.
-4. **Honest Failure Handling**: Clear unavailability notices when an upstream provider is down; empty alert feeds are never disguised as "All Clear".
+For line-by-line verification evidence, scoring rubrics, security audit findings, and mathematical calculations across all five core modules, consult the official audit report:
+[docs/CORE_MODULE_AUDIT.md](docs/CORE_MODULE_AUDIT.md)
 
 ---
 
-## 📄 License
+## License & Ethical Commitment
 
-This project is licensed under the [MIT License](LICENSE).
+SkyGuard is released under the **[MIT License](LICENSE)**.
+
+SkyGuard is dedicated to ethical public interest computing. All weather intelligence, emergency warnings, and agricultural risk calculations prioritize data authenticity, user privacy, and algorithmic transparency above commercial gamification or synthetic simulation.

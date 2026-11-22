@@ -50,16 +50,20 @@ Retrieves full details of a specific authentic alert by identifier from the data
 ```json
 {
   "id": "AlertHub-280ff0f9-602e-577e-825d-675dc5cc0fae",
-  "source_provider": "Alert-Hub.org (cn-cma)",
+  "source_provider": "Alert-Hub.org",
   "alert_type": "OFFICIAL_CAP_WARNING",
   "event": "Yellow Warning for Road Ice and Snow",
   "headline": "Aihui District Meteorological Observatory issues yellow warning",
-  "severity": "Moderate",
+  "severity": "Unknown",
+  "severity_original": "Original CAP severity not provided in RSS feed summary; inspect raw CAP XML",
   "issuer": "Official National Meteorological Service",
   "country_code": "CN",
   "affected_area": "Aihui District",
   "latitude": 50.25,
   "longitude": 127.50,
+  "polygons": ["50.20,127.40 50.30,127.40 50.30,127.60 50.20,127.60"],
+  "is_country_wide": false,
+  "geographic_status": "POLYGON_VERIFIED",
   "effective_time": "2026-11-17T15:58:00Z",
   "expires_time": "2026-11-18T16:00:00Z",
   "description": "Roads will freeze and remain icy...",
@@ -92,8 +96,10 @@ Returns the server's NIST P-256 public key in uncompressed URL-safe base64 forma
 Registers or updates a browser push subscription. Generates and returns a secret possession token (`sub_tok_...`) required for future modifications.
 
 **Security Controls**:
-- Validates endpoint domain against approved browser push gateways (`fcm.googleapis.com`, `*.push.services.mozilla.com`, `*.push.apple.com`, `*.notify.windows.com`) to prevent SSRF.
-- Stores token as a SHA-256 hash.
+- **SSRF Defense**: Validates endpoint domain against approved browser push gateways (`fcm.googleapis.com`, `*.push.services.mozilla.com`, `*.push.apple.com`, `*.notify.windows.com`), enforces HTTPS on port 443, and performs DNS resolution checks blocking private, loopback, link-local, and reserved IP addresses.
+- **Anti-Takeover Protection**: Re-registering or updating an existing active push endpoint strictly requires passing `existing_token` matching the stored SHA-256 hash. Unauthorized takeover attempts return `HTTP 409 Conflict`.
+- **Sliding Window Rate Limiting**: Enforces max 10 registration requests per minute per IP.
+- **Geographic Scope Opt-In**: `wants_country_wide` boolean allows voluntary opt-in for nationwide bulletins.
 
 **Request Schema**:
 ```json
@@ -107,6 +113,8 @@ Registers or updates a browser push subscription. Generates and returns a secret
   "latitude": 17.9784,
   "longitude": 79.6005,
   "radius_km": 500.0,
+  "wants_country_wide": false,
+  "existing_token": null,
   "categories": ["OFFICIAL_CAP_WARNING", "GDACS_DISASTER_ALERT"],
   "min_severity": "Moderate"
 }
@@ -124,6 +132,7 @@ Registers or updates a browser push subscription. Generates and returns a secret
   "latitude": 17.9784,
   "longitude": 79.6005,
   "radius_km": 500.0,
+  "wants_country_wide": false,
   "created_at": "2026-11-17T09:00:00Z"
 }
 ```
@@ -157,7 +166,7 @@ Updates alert categories, minimum severity, or location filtering preferences.
 ---
 
 ### 4.6 POST `/api/v1/push/test`
-Dispatches an explicitly labeled diagnostic push notification containing **no weather claim** to verify browser Web Push delivery end-to-end.
+Dispatches an explicitly labeled diagnostic push notification containing **no weather claim** to verify browser Web Push delivery end-to-end. Rate limited to 5 requests per minute.
 - **Required Header**: `X-Subscription-Token: <possession_token>`
 
 **Diagnostic Payload Content**:
@@ -173,4 +182,9 @@ Dispatches an explicitly labeled diagnostic push notification containing **no we
 ---
 
 ### 4.7 POST `/api/v1/push/dispatch-sync`
-Triggers an on-demand synchronization pass across active genuine feeds (WMO SWIC, GDACS), matches against active subscriptions, and dispatches encrypted Web Push messages while enforcing idempotency keys.
+Triggers an on-demand synchronization pass across active genuine feeds (WMO SWIC, GDACS), matches against active subscriptions using Shapely Point-in-Polygon verification, and dispatches encrypted Web Push messages.
+- **Authorization Required**: Header `X-Worker-Key: <INTERNAL_WORKER_KEY>` matching backend configuration. Unauthorized requests return `HTTP 403 Forbidden`.
+- **Delivery Guarantees**:
+  - Differentiates Gateway Acceptance (`GATEWAY_ACCEPTED`) from client display; records gateway receipts (`HTTP_201`).
+  - Implements exponential backoff retry scheduling for transient failures (HTTP 429, 5xx).
+  - Automatically deactivates permanently dead subscriptions (HTTP 404, 410).

@@ -11,6 +11,7 @@ __pycache__/
 out/
 build/
 dist/
+*.tsbuildinfo
 
 # Logs & Environment
 *.log
@@ -24,8 +25,26 @@ dist/
 .DS_Store
 Thumbs.db
 
+# Scratch and verification scripts
+scratch/
+
 # Database & Secrets
 *.db
 *.sqlite
 *.sqlite3
 *.pem
+
+# Reference files not to be pushed
+just read don't push to github
+
+# Screenshots & Media Captures
+screenshots/
+docs/screenshots/
+design/references/screenshots/
+*.png
+!apps/web/public/*.png
+*.jpg
+*.jpeg
+*.mp4
+*.webp
+

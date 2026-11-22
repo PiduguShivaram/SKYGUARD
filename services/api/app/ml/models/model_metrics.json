@@ -1,0 +1,90 @@
+{
+  "model_type": "Ridge",
+  "feature_names": [
+    "forecast_temp",
+    "forecast_rh",
+    "forecast_wind",
+    "forecast_pressure",
+    "solar_hour_sin",
+    "solar_hour_cos",
+    "day_of_year_sin",
+    "day_of_year_cos",
+    "elevation_m"
+  ],
+  "training_metadata": {
+    "stations": [
+      "New Delhi",
+      "London",
+      "Tokyo",
+      "New York",
+      "Denver"
+    ],
+    "start_date": "2024-09-01",
+    "end_date": "2024-10-31",
+    "total_samples": 7320,
+    "train_samples": 5855,
+    "holdout_test_samples": 1465,
+    "split_time": "2024-10-19T19:00",
+    "trained_at_utc": "2026-11-22T06:23:54.632494",
+    "target_dataset_provenance": "Open-Meteo Historical Archive (ERA5 Reanalysis / Numerical Hindcast models; not in-situ rain gauges or raw primary station loggers)"
+  },
+  "overall_evaluation": {
+    "baseline_raw_forecast": {
+      "mae_c": 0.923,
+      "rmse_c": 1.344,
+      "mean_bias_c": 0.437
+    },
+    "ml_mos_corrected": {
+      "mae_c": 0.953,
+      "rmse_c": 1.298,
+      "mean_bias_c": 0.462
+    },
+    "error_reduction": {
+      "mae_improvement_c": -0.03,
+      "mae_reduction_pct": -3.3,
+      "bias_reduction_c": -0.025
+    }
+  },
+  "station_breakdown": {
+    "New Delhi": {
+      "test_samples": 293,
+      "baseline_mae_c": 0.0,
+      "mos_mae_c": 0.409,
+      "mae_reduction_pct": -4085.7,
+      "baseline_bias_c": 0.0,
+      "mos_bias_c": 0.403
+    },
+    "London": {
+      "test_samples": 293,
+      "baseline_mae_c": 1.343,
+      "mos_mae_c": 1.368,
+      "mae_reduction_pct": -1.8,
+      "baseline_bias_c": 1.17,
+      "mos_bias_c": 1.257
+    },
+    "Tokyo": {
+      "test_samples": 293,
+      "baseline_mae_c": 0.849,
+      "mos_mae_c": 0.772,
+      "mae_reduction_pct": 9.0,
+      "baseline_bias_c": -0.316,
+      "mos_bias_c": -0.187
+    },
+    "New York": {
+      "test_samples": 293,
+      "baseline_mae_c": 1.255,
+      "mos_mae_c": 1.077,
+      "mae_reduction_pct": 14.2,
+      "baseline_bias_c": 0.932,
+      "mos_bias_c": 0.433
+    },
+    "Denver": {
+      "test_samples": 293,
+      "baseline_mae_c": 1.166,
+      "mos_mae_c": 1.138,
+      "mae_reduction_pct": 2.4,
+      "baseline_bias_c": 0.401,
+      "mos_bias_c": 0.405
+    }
+  }
+}

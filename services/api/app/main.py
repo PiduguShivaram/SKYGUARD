@@ -9,7 +9,7 @@ from fastapi.responses import JSONResponse
 from services.api.app.clients.open_meteo import open_meteo_client
 from services.api.app.config import settings
 from services.api.app.db.base import init_db
-from services.api.app.routers import alerts, farmer, geo, health, push, risk, weather
+from services.api.app.routers import alerts, farmer, geo, health, push, risk, weather, prediction, telegram
 from services.api.app.schemas.common import Provenance
 from services.api.app.schemas.geo import GeocodingResponse
 from services.api.app.schemas.weather import WeatherForecastResponse
@@ -92,6 +92,8 @@ app.include_router(alerts.router)
 app.include_router(push.router)
 app.include_router(risk.router)
 app.include_router(farmer.router)
+app.include_router(prediction.router)
+app.include_router(telegram.router)
 
 
 @app.get("/")

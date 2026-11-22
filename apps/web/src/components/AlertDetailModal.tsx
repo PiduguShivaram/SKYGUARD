@@ -8,10 +8,6 @@ import {
   Clock,
   MapPin,
   Building,
-  Info,
-  Activity,
-  AlertTriangle,
-  Globe,
   Tag,
 } from "lucide-react";
 import { GlobalAlertItem } from "@/types";
@@ -50,20 +46,29 @@ export const AlertDetailModal: React.FC<AlertDetailModalProps> = ({
       .finally(() => setLoading(false));
   }, [alertId, preloadedAlert]);
 
+  // Handle escape key
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [onClose]);
+
   if (!alertId) return null;
 
   const getSeverityBadgeClass = (sev: string) => {
     switch (sev.toLowerCase()) {
       case "extreme":
-        return "bg-rose-500/20 text-rose-300 border-rose-500/40";
+        return "bg-rose-500/20 text-rose-300 border-rose-500/30";
       case "severe":
-        return "bg-orange-500/20 text-orange-300 border-orange-500/40";
+        return "bg-amber-500/20 text-amber-300 border-amber-500/30";
       case "moderate":
-        return "bg-amber-500/20 text-amber-300 border-amber-500/40";
+        return "bg-blue-600/20 text-blue-300 border-blue-500/30";
       case "minor":
-        return "bg-sky-500/20 text-sky-300 border-sky-500/40";
+        return "bg-surface-elevated text-text-muted border-border-subtle";
       default:
-        return "bg-slate-500/20 text-slate-300 border-slate-500/40";
+        return "bg-surface-elevated text-text-muted border-border-subtle";
     }
   };
 
@@ -74,44 +79,37 @@ export const AlertDetailModal: React.FC<AlertDetailModalProps> = ({
       alert.description.trim().toLowerCase() === alert.event.trim().toLowerCase());
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-fadeIn">
-      <div className="bg-slate-900 border border-slate-700/80 rounded-2xl max-w-xl w-full p-6 shadow-2xl space-y-5 max-h-[90vh] overflow-y-auto">
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="modal-headline"
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm animate-in fade-in duration-150"
+    >
+      <div className="surface-panel rounded-sg max-w-xl w-full p-6 shadow-dialog space-y-4 max-h-[90vh] overflow-y-auto">
         {/* Header */}
-        <div className="flex items-start justify-between gap-4 pb-4 border-b border-slate-800">
+        <div className="flex items-start justify-between gap-4 pb-3.5 border-b border-border-subtle">
           <div className="flex items-start gap-3">
-            <div className="p-2.5 bg-rose-500/10 text-rose-400 rounded-xl border border-rose-500/20 mt-0.5">
+            <div className="p-2 bg-rose-500/15 text-rose-400 rounded-sg shrink-0 mt-0.5">
               <ShieldAlert className="w-5 h-5" />
             </div>
             <div>
               <div className="flex items-center gap-2 flex-wrap">
-                <span className={`text-[11px] font-bold px-2 py-0.5 rounded border ${alert ? getSeverityBadgeClass(alert.severity) : ""}`}>
+                <span className={`text-[11px] font-mono font-medium px-2 py-0.5 rounded-sg border ${alert ? getSeverityBadgeClass(alert.severity) : ""}`}>
                   {alert?.severity || "Active Alert"}
                 </span>
 
-                {alert?.local_color_code && (
-                  <span className="text-[11px] font-bold px-2 py-0.5 rounded border bg-amber-500/20 text-amber-300 border-amber-500/30">
-                    {alert.local_color_code}
-                  </span>
-                )}
-
                 {alert?.msg_type === "Cancel" && (
-                  <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-rose-500/20 text-rose-300 border border-rose-500/40">
+                  <span className="text-[10px] font-mono font-medium px-2 py-0.5 rounded-sg bg-rose-500/20 text-rose-300 border border-rose-500/30">
                     CANCELLED
                   </span>
                 )}
 
-                <span className="text-[11px] font-mono text-slate-400 bg-slate-850 px-2 py-0.5 rounded border border-slate-800">
+                <span className="text-[11px] text-text-muted bg-surface-base px-2 py-0.5 rounded-sg border border-border-subtle">
                   {alert?.source_provider || "Authoritative Provider"}
                 </span>
-
-                {alert?.language && (
-                  <span className="text-[10px] font-mono uppercase text-slate-400 bg-slate-900 px-1.5 py-0.5 rounded border border-slate-800">
-                    {alert.language}
-                  </span>
-                )}
               </div>
 
-              <h3 className="text-base font-bold text-white mt-2 leading-snug">
+              <h3 id="modal-headline" className="text-base font-semibold text-white mt-1.5 leading-snug">
                 {alert?.headline || "Loading Alert Details..."}
               </h3>
             </div>
@@ -119,20 +117,21 @@ export const AlertDetailModal: React.FC<AlertDetailModalProps> = ({
 
           <button
             onClick={onClose}
-            className="p-1.5 text-slate-400 hover:text-white rounded-lg hover:bg-slate-800 transition-colors shrink-0"
+            className="p-1.5 text-text-muted hover:text-white rounded-sg hover:bg-surface-elevated transition-colors shrink-0 min-h-[44px] min-w-[44px] flex items-center justify-center"
+            aria-label="Close dialog"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
 
         {loading && (
-          <div className="py-12 text-center text-xs text-slate-400 space-y-2 animate-pulse">
+          <div className="py-8 text-center text-xs text-text-muted space-y-2 animate-pulse">
             <p>Retrieving authentic bulletin record...</p>
           </div>
         )}
 
         {error && (
-          <div className="p-4 rounded-xl bg-rose-950/30 border border-rose-500/30 text-rose-300 text-xs">
+          <div className="p-3.5 rounded-sg bg-rose-950/20 border border-rose-500/30 text-rose-300 text-xs">
             {error}
           </div>
         )}
@@ -140,43 +139,34 @@ export const AlertDetailModal: React.FC<AlertDetailModalProps> = ({
         {alert && !loading && (
           <div className="space-y-4 text-xs">
             {/* Metadata Grid */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 p-3.5 rounded-xl bg-slate-850/60 border border-slate-800">
-              <div className="flex items-center gap-2 text-slate-300">
-                <Building className="w-4 h-4 text-slate-500 shrink-0" />
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 p-3 rounded-sg bg-surface-base border border-border-subtle">
+              <div className="flex items-center gap-2 text-text-primary">
+                <Building className="w-4 h-4 text-text-muted shrink-0" />
                 <span>
-                  <strong className="text-slate-400">Issuer:</strong> {alert.issuer}
+                  <strong className="text-text-muted font-medium">Issuer:</strong> {alert.issuer}
                 </span>
               </div>
 
-              <div className="flex items-center gap-2 text-slate-300">
-                <MapPin className="w-4 h-4 text-slate-500 shrink-0" />
+              <div className="flex items-center gap-2 text-text-primary">
+                <MapPin className="w-4 h-4 text-text-muted shrink-0" />
                 <span>
-                  <strong className="text-slate-400">Area:</strong> {alert.affected_area}
+                  <strong className="text-text-muted font-medium">Area:</strong> {alert.affected_area}
                   {alert.country_code ? ` [${alert.country_code}]` : ""}
                 </span>
               </div>
 
-              <div className="flex items-center gap-2 text-slate-300">
-                <Tag className="w-4 h-4 text-slate-500 shrink-0" />
+              <div className="flex items-center gap-2 text-text-primary">
+                <Tag className="w-4 h-4 text-text-muted shrink-0" />
                 <span>
-                  <strong className="text-slate-400">Urgency / Certainty:</strong> {alert.urgency || "Unknown"} / {alert.certainty || "Unknown"}
+                  <strong className="text-text-muted font-medium">Urgency / Certainty:</strong> {alert.urgency || "Unknown"} / {alert.certainty || "Unknown"}
                 </span>
               </div>
 
               {alert.effective_time && (
-                <div className="flex items-center gap-2 text-slate-300">
-                  <Clock className="w-4 h-4 text-slate-500 shrink-0" />
+                <div className="flex items-center gap-2 text-text-primary">
+                  <Clock className="w-4 h-4 text-text-muted shrink-0" />
                   <span>
-                    <strong className="text-slate-400">Issued:</strong> {alert.effective_time}
-                  </span>
-                </div>
-              )}
-
-              {alert.expires_time && (
-                <div className="flex items-center gap-2 text-slate-300">
-                  <Clock className="w-4 h-4 text-slate-500 shrink-0" />
-                  <span>
-                    <strong className="text-slate-400">Expires:</strong> {alert.expires_time}
+                    <strong className="text-text-muted font-medium">Issued:</strong> {alert.effective_time}
                   </span>
                 </div>
               )}
@@ -184,12 +174,12 @@ export const AlertDetailModal: React.FC<AlertDetailModalProps> = ({
 
             {/* Description */}
             <div>
-              <h4 className="text-xs font-bold text-slate-300 uppercase tracking-wider mb-1.5">
+              <h4 className="text-xs font-semibold text-text-primary uppercase tracking-wider mb-1">
                 Official Advisory Bulletin
               </h4>
-              <div className="p-4 rounded-xl bg-slate-850/40 border border-slate-800 text-slate-300 leading-relaxed max-h-56 overflow-y-auto whitespace-pre-wrap">
+              <div className="p-3.5 rounded-sg bg-surface-base border border-border-subtle text-text-primary leading-relaxed max-h-56 overflow-y-auto whitespace-pre-wrap text-xs">
                 {isDescRedundant ? (
-                  <p className="italic text-slate-400">
+                  <p className="text-text-muted italic">
                     Official bulletin headline conveys full scope: {alert.headline}
                   </p>
                 ) : (
@@ -198,13 +188,13 @@ export const AlertDetailModal: React.FC<AlertDetailModalProps> = ({
               </div>
             </div>
 
-            {/* Official Source Link */}
+            {/* Official Source Link & Close */}
             <div className="flex items-center justify-between pt-2">
               <a
                 href={alert.source_url}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center gap-1.5 px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white font-semibold rounded-xl transition-colors shadow-sm"
+                className="inline-flex items-center gap-1.5 px-3.5 py-2.5 bg-brand-fill hover:bg-brand-hover text-white font-medium rounded-sg transition-colors text-xs min-h-[44px]"
               >
                 <span>View Raw Provider Bulletin</span>
                 <ExternalLink className="w-3.5 h-3.5" />
@@ -212,18 +202,10 @@ export const AlertDetailModal: React.FC<AlertDetailModalProps> = ({
 
               <button
                 onClick={onClose}
-                className="px-4 py-2 bg-slate-800 hover:bg-slate-750 text-slate-300 hover:text-white rounded-xl transition-colors font-medium"
+                className="px-4 py-2.5 bg-surface-elevated hover:bg-surface-base text-text-primary hover:text-white rounded-sg transition-colors font-medium text-xs border border-border-subtle min-h-[44px]"
               >
                 Close
               </button>
-            </div>
-
-            {/* Zero-Fabrication Transparency Notice */}
-            <div className="p-3 rounded-xl bg-slate-950/80 border border-slate-800 text-[11px] text-slate-400 flex items-start gap-2">
-              <Info className="w-4 h-4 text-blue-400 shrink-0 mt-0.5" />
-              <span>
-                Bulletin retrieved verbatim from authoritative international feeds ({alert.source_provider}). SkyGuard enforces absolute data integrity: alerts are never seeded or synthesized.
-              </span>
             </div>
           </div>
         )}

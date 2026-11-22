@@ -83,6 +83,39 @@ class GlobalAlertAggregator:
         official_warnings.sort(key=lambda a: (sev_rank.get(a.severity.value, 5), a.headline))
         disaster_alerts.sort(key=lambda a: (sev_rank.get(a.severity.value, 5), a.distance_km if a.distance_km is not None else 99999))
 
+        # Categorical Spatial Segregation (ALT-09, ALT-10): Local Polygon-Verified vs National Advisories
+        local_verified_warnings: List[GlobalAlertItem] = []
+        country_wide_advisories: List[GlobalAlertItem] = []
+
+        if latitude is not None and longitude is not None:
+            from services.api.app.services.geo_matcher import evaluate_alert_spatial_match
+            from services.api.app.adapters.source_registry import strictly_matches_country
+            for item in official_warnings:
+                is_match, reason, _ = evaluate_alert_spatial_match(
+                    sub_country=country_code,
+                    sub_lat=latitude,
+                    sub_lon=longitude,
+                    sub_radius_km=radius_km or 100.0,
+                    wants_country_wide=False,
+                    alert_country_code=item.country_code,
+                    alert_area_desc=item.affected_area,
+                    alert_headline=item.headline,
+                    alert_lat=item.latitude,
+                    alert_lon=item.longitude,
+                    alert_polygons_str=item.polygons,
+                    alert_circles_str=getattr(item, "circles", None),
+                    alert_is_country_wide=item.is_country_wide,
+                    alert_geographic_status=item.geographic_status,
+                )
+                if is_match and reason in ("POINT_IN_POLYGON_VERIFIED", "INSIDE_OFFICIAL_CIRCLE"):
+                    local_verified_warnings.append(item)
+                elif country_code and strictly_matches_country(country_code, item.country_code) and (item.is_country_wide or reason == "OFFICIAL_COUNTRY_WIDE_COVERAGE"):
+                    country_wide_advisories.append(item)
+        else:
+            # Without coordinates, NO warning is locally verified (ALT-10)
+            for item in official_warnings:
+                country_wide_advisories.append(item)
+
         # Coverage Notes
         coverage_text = (
             "SkyGuard aggregates genuine international severe weather feeds: official CAP bulletins from WMO-registered "
@@ -109,6 +142,8 @@ class GlobalAlertAggregator:
             total_official_warnings=len(official_warnings),
             total_disaster_alerts=len(disaster_alerts),
             official_cap_warnings=official_warnings,
+            local_verified_warnings=local_verified_warnings,
+            country_wide_advisories=country_wide_advisories,
             gdacs_disaster_alerts=disaster_alerts,
             providers_health=providers_health,
             coverage_notes=coverage_text,

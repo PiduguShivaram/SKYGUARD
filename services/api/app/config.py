@@ -1,5 +1,6 @@
 """Application settings and environment configurations."""
-from typing import List
+from pathlib import Path
+from typing import List, Optional
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -7,6 +8,7 @@ class Settings(BaseSettings):
     PROJECT_NAME: str = "SkyGuard API"
     VERSION: str = "1.0.0"
     DEBUG: bool = False
+    APP_ENV: str = "development"
     
     # Server configuration
     HOST: str = "127.0.0.1"
@@ -30,6 +32,10 @@ class Settings(BaseSettings):
     EE_SERVICE_ACCOUNT: str = ""
     EE_PRIVATE_KEY: str = ""
 
+    # Supabase Cloud Persistence
+    SUPABASE_URL: str = ""
+    SUPABASE_KEY: str = ""
+
     # Database
     DATABASE_URL: str = "sqlite+aiosqlite:///./skyguard.db"
 
@@ -39,10 +45,32 @@ class Settings(BaseSettings):
     VAPID_CLAIM_EMAIL: str = "mailto:alerts@skyguard.org"
     VAPID_KEY_FILE: str = "vapid_private.pem"
 
+    # Telegram Mobile Alert Configuration
+    TELEGRAM_BOT_TOKEN: str = ""
+    TELEGRAM_BOT_USERNAME: str = "skyguard_alerts_bot"
+
+    # Security & Background Worker Controls
+    INTERNAL_WORKER_KEY: Optional[str] = None
+    ENABLE_AUTOMATIC_EMERGENCY_DISPATCH: bool = False
+    MAX_DELIVERY_RETRIES: int = 3
+    RETRY_BACKOFF_BASE_SECONDS: int = 60
+    ALLOWED_PUSH_GATEWAYS: List[str] = [
+        "fcm.googleapis.com",
+        "push.services.mozilla.com",
+        "updates.push.services.mozilla.com",
+        "push.apple.com",
+        "web.push.apple.com",
+        "notify.windows.com",
+    ]
+
     model_config = SettingsConfigDict(
-        env_file=".env",
+        env_file=(
+            str(Path(__file__).resolve().parent.parent / ".env"),
+            str(Path(__file__).resolve().parent.parent.parent / ".env"),
+            ".env",
+        ),
         env_file_encoding="utf-8",
-        extra="ignore"
+        extra="ignore",
     )
 
 

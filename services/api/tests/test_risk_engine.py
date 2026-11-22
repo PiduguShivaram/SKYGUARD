@@ -14,7 +14,7 @@ def test_heavy_rainfall_threshold():
             weather_icon="heavy-rain",
             temperature_2m_max=29.0,
             temperature_2m_min=22.0,
-            precipitation_sum=60.0,  # >= 50mm triggers High
+            precipitation_sum=65.0,  # >= 64.5mm triggers IMD Official Heavy Rain
             precipitation_probability_max=95.0,
             wind_gusts_10m_max=35.0,
         )
@@ -25,7 +25,7 @@ def test_heavy_rainfall_threshold():
     sig = res.signals[0]
     assert sig.category == "Heavy Rainfall Indicator"
     assert sig.severity == RiskSeverityEnum.HIGH
-    assert "60.0 mm" in sig.evidence
+    assert "65.0 mm" in sig.evidence
 
 
 def test_extreme_heat_threshold():
@@ -35,7 +35,7 @@ def test_extreme_heat_threshold():
             weather_code=0,
             weather_description="Clear sky",
             weather_icon="clear",
-            temperature_2m_max=44.5,  # >= 43C triggers High
+            temperature_2m_max=45.5,  # >= 45C triggers IMD Extreme Heatwave in plains
             temperature_2m_min=30.0,
             precipitation_sum=0.0,
             precipitation_probability_max=0.0,
@@ -47,7 +47,7 @@ def test_extreme_heat_threshold():
     sig = res.signals[0]
     assert sig.category == "Extreme Heatwave Indicator"
     assert sig.severity == RiskSeverityEnum.HIGH
-    assert "44.5°C" in sig.evidence
+    assert "45.5°C" in sig.evidence
 
 
 def test_strong_wind_threshold():

@@ -20,6 +20,13 @@ export interface LocationSearchResult {
   formatted_label: string;
 }
 
+export interface CuratedCityWeather {
+  cityName: string;
+  temperature: number;
+  weatherCode: number;
+  isDay: boolean;
+}
+
 export interface GeocodingResponse {
   query: string;
   count: number;
@@ -39,6 +46,7 @@ export interface CurrentWeather {
   weather_icon: string;
   wind_speed_10m: number;
   wind_direction_10m?: number;
+  cloud_cover?: number | null;
 }
 
 export interface HourlyForecastPoint {
@@ -49,6 +57,8 @@ export interface HourlyForecastPoint {
   weather_code: number;
   weather_description: string;
   wind_speed_10m: number;
+  is_day?: number;
+  cloud_cover?: number | null;
 }
 
 export interface DailyForecastPoint {
@@ -87,6 +97,12 @@ export type AlertCategory = "OFFICIAL_CAP_WARNING" | "GDACS_DISASTER_ALERT";
 export type AlertSeverity = "Extreme" | "Severe" | "Moderate" | "Minor" | "Unknown";
 export type ProviderHealthStatus = "CONNECTED" | "UNAVAILABLE" | "STALE";
 
+export type GeographicStatus =
+  | "POLYGON_VERIFIED"
+  | "COORDINATE_POINT"
+  | "TERRITORY_NATIONAL"
+  | "LOCATION_UNVERIFIED";
+
 export interface GlobalAlertItem {
   id: string;
   source_provider: string; // WMO SWIC, GDACS, Alert-Hub.org
@@ -110,6 +126,12 @@ export interface GlobalAlertItem {
   description: string;
   source_url: string;
   distance_km?: number;
+  polygons?: string[];
+  is_country_wide?: boolean;
+  geographic_status?: GeographicStatus;
+  status?: string;
+  scope?: string;
+  references?: string;
 }
 
 export interface ProviderHealth {
@@ -133,6 +155,8 @@ export interface GlobalAlertsResponse {
   total_disaster_alerts: number;
   official_cap_warnings: GlobalAlertItem[];
   gdacs_disaster_alerts: GlobalAlertItem[];
+  local_verified_warnings?: GlobalAlertItem[];
+  country_wide_advisories?: GlobalAlertItem[];
   providers_health: Record<string, ProviderHealth>;
   coverage_notes: string;
   provenance: Provenance;
@@ -215,6 +239,8 @@ export interface PushSubscribePayload {
   latitude?: number;
   longitude?: number;
   radius_km?: number;
+  wants_country_wide?: boolean;
+  existing_token?: string;
   categories?: AlertCategory[];
   min_severity?: AlertSeverity;
 }
@@ -229,6 +255,7 @@ export interface PushSubscribeResponse {
   latitude?: number;
   longitude?: number;
   radius_km: number;
+  wants_country_wide: boolean;
   created_at: string;
 }
 
@@ -241,6 +268,7 @@ export interface PushPreferencesResponse {
   latitude?: number;
   longitude?: number;
   radius_km: number;
+  wants_country_wide: boolean;
   is_active: boolean;
   created_at: string;
   updated_at: string;
@@ -253,13 +281,119 @@ export interface PushPreferencesUpdateRequest {
   latitude?: number;
   longitude?: number;
   radius_km?: number;
+  wants_country_wide?: boolean;
   is_active?: boolean;
 }
 
 export interface DiagnosticPushTestResponse {
   status: string;
-  message: string;
-  tag: string;
-  delivered_at: string;
-  note: string;
+  receipt?: string;
+  message?: string;
+  note?: string;
+}
+
+// Hybrid Multi-Model & Nowcasting Engine (Phases A-K)
+export interface ModelMetadata {
+  model_id: string;
+  name: string;
+  agency: string;
+  country: string;
+  native_resolution_km: number;
+  forecast_horizon_days: number;
+  status: string;
+  notes?: string;
+}
+
+export interface ModelForecastPoint {
+  time: string;
+  temperature_2m: number;
+  precipitation?: number | null;
+  wind_speed_10m?: number | null;
+}
+
+export interface ConsensusPoint {
+  time: string;
+  consensus_temperature_2m: number;
+  median_temperature_2m: number;
+  consensus_precipitation?: number | null;
+  consensus_wind_speed_10m?: number | null;
+  temperature_spread_min: number;
+  temperature_spread_max: number;
+  temperature_std_dev: number;
+  precipitation_spread_max?: number | null;
+  models_reporting: string[];
+  disagreement_level: "LOW" | "MODERATE" | "HIGH" | "INSUFFICIENT_MODELS";
+}
+
+export interface MultiModelResponse {
+  latitude: number;
+  longitude: number;
+  elevation?: number;
+  timezone: string;
+  models_available: ModelMetadata[];
+  consensus_hourly: ConsensusPoint[];
+  models_series: Record<string, ModelForecastPoint[]>;
+  provenance: Provenance;
+}
+
+export interface StationObservation {
+  station_id: string;
+  station_name: string;
+  latitude: number;
+  longitude: number;
+  elevation_m?: number;
+  distance_km?: number;
+  observation_time: string;
+  temperature_c?: number;
+  dewpoint_c?: number;
+  relative_humidity?: number;
+  wind_speed_kmh?: number;
+  wind_direction_deg?: number;
+  visibility_km?: number;
+  pressure_hpa?: number;
+  weather_condition?: string;
+  flight_category?: string;
+  qc_passed: boolean;
+  raw_metar: string;
+  source_network: string;
+}
+
+export interface NearbyObservationResponse {
+  query_latitude: number;
+  query_longitude: number;
+  observation?: StationObservation | null;
+  model_comparison?: {
+    model_temp_c: number;
+    observed_temp_c: number;
+    temp_bias_c: number;
+    station_distance_km: number;
+  } | null;
+  status: "OBSERVATION_FOUND" | "NO_STATION_WITHIN_RANGE" | "STATION_OFFLINE";
+  provenance: Provenance;
+}
+
+export interface RadarFrame {
+  timestamp: number;
+  iso_time: string;
+  tile_path: string;
+  frame_type: "past" | "nowcast";
+}
+
+export interface NowcastInterval {
+  time: string;
+  lead_minutes: number;
+  estimated_precipitation_rate_mmh: number;
+  trend: "STEADY" | "INTENSIFYING" | "WEAKENING" | "CLEAR";
+  method: "RADAR_EXTRAPOLATION" | "NWP_DEGRADATION";
+}
+
+export interface RadarNowcastResponse {
+  latitude: number;
+  longitude: number;
+  radar_status: "ACTIVE" | "ACTIVE_HISTORICAL_MOSAIC_ONLY" | "OUTSIDE_GROUND_RADAR_COVERAGE" | "DEGRADED_OUT_OF_RADAR_COVERAGE" | "DEGRADED_UNAVAILABLE";
+  host: string;
+  recent_frames: RadarFrame[];
+  nowcast_intervals: NowcastInterval[];
+  coverage_note: string;
+  provenance: Provenance;
 }

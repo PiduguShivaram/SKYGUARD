@@ -100,6 +100,11 @@ class OpenMeteoClient:
         results: List[LocationSearchResult] = []
         for item in raw_results:
             name = item.get("name", "")
+            lat_val = item.get("latitude")
+            lon_val = item.get("longitude")
+            if lat_val is None or lon_val is None:
+                continue
+
             admin1 = item.get("admin1")
             country = item.get("country")
             parts = [name]
@@ -113,8 +118,8 @@ class OpenMeteoClient:
                 LocationSearchResult(
                     id=item.get("id", 0),
                     name=name,
-                    latitude=float(item.get("latitude", 0.0)),
-                    longitude=float(item.get("longitude", 0.0)),
+                    latitude=float(lat_val),
+                    longitude=float(lon_val),
                     elevation=item.get("elevation"),
                     feature_code=item.get("feature_code"),
                     country_code=item.get("country_code"),
@@ -132,8 +137,8 @@ class OpenMeteoClient:
         params = {
             "latitude": latitude,
             "longitude": longitude,
-            "current": "temperature_2m,relative_humidity_2m,apparent_temperature,is_day,precipitation,weather_code,wind_speed_10m,wind_direction_10m",
-            "hourly": "temperature_2m,precipitation_probability,precipitation,weather_code,wind_speed_10m",
+            "current": "temperature_2m,relative_humidity_2m,apparent_temperature,is_day,precipitation,weather_code,wind_speed_10m,wind_direction_10m,cloud_cover",
+            "hourly": "temperature_2m,precipitation_probability,precipitation,weather_code,wind_speed_10m,cloud_cover,is_day",
             "daily": "weather_code,temperature_2m_max,temperature_2m_min,precipitation_sum,precipitation_probability_max,wind_gusts_10m_max,uv_index_max,sunrise,sunset",
             "timezone": "auto",
             "forecast_days": 7,
@@ -169,24 +174,50 @@ class OpenMeteoClient:
         if not current_data or not daily_data:
             raise HTTPException(
                 status_code=502,
-                detail="Provider returned incomplete forecast structure.",
+                detail="Provider returned incomplete forecast structure (missing current or daily section).",
+            )
+
+        # Validate mandatory current weather fields (zero fabricated fallbacks permitted)
+        mandatory_current = [
+            "temperature_2m",
+            "relative_humidity_2m",
+            "apparent_temperature",
+            "is_day",
+            "precipitation",
+            "weather_code",
+            "wind_speed_10m",
+        ]
+        missing_fields = [f for f in mandatory_current if current_data.get(f) is None]
+        if missing_fields:
+            raise HTTPException(
+                status_code=502,
+                detail=f"Provider returned incomplete current weather parameters (missing mandatory: {', '.join(missing_fields)}).",
             )
 
         # Parse current
-        w_code = current_data.get("weather_code", 0)
+        w_code = int(current_data["weather_code"])
         desc, icon = interpret_wmo_code(w_code)
         current = CurrentWeather(
-            time=current_data.get("time", datetime.now(timezone.utc).isoformat()),
-            temperature_2m=float(current_data.get("temperature_2m", 0.0)),
-            relative_humidity_2m=float(current_data.get("relative_humidity_2m", 0.0)),
-            apparent_temperature=float(current_data.get("apparent_temperature", 0.0)),
-            is_day=int(current_data.get("is_day", 1)),
-            precipitation=float(current_data.get("precipitation", 0.0)),
+            time=str(current_data.get("time") or datetime.now(timezone.utc).isoformat()),
+            temperature_2m=float(current_data["temperature_2m"]),
+            relative_humidity_2m=float(current_data["relative_humidity_2m"]),
+            apparent_temperature=float(current_data["apparent_temperature"]),
+            is_day=int(current_data["is_day"]),
+            precipitation=float(current_data["precipitation"]),
             weather_code=w_code,
             weather_description=desc,
             weather_icon=icon,
-            wind_speed_10m=float(current_data.get("wind_speed_10m", 0.0)),
-            wind_direction_10m=current_data.get("wind_direction_10m"),
+            wind_speed_10m=float(current_data["wind_speed_10m"]),
+            wind_direction_10m=(
+                float(current_data["wind_direction_10m"])
+                if current_data.get("wind_direction_10m") is not None
+                else None
+            ),
+            cloud_cover=(
+                float(current_data["cloud_cover"])
+                if current_data.get("cloud_cover") is not None
+                else None
+            ),
         )
 
         # Parse hourly (slice next 48 hours)
@@ -196,22 +227,47 @@ class OpenMeteoClient:
         h_precips = hourly_data.get("precipitation", [])
         h_codes = hourly_data.get("weather_code", [])
         h_winds = hourly_data.get("wind_speed_10m", [])
+        h_clouds = hourly_data.get("cloud_cover", [])
+        h_is_days = hourly_data.get("is_day", [])
+
+        if not h_times:
+            raise HTTPException(
+                status_code=502,
+                detail="Provider returned empty hourly forecast array.",
+            )
 
         hourly_points: List[HourlyForecastPoint] = []
         for i, t in enumerate(h_times):
-            code = h_codes[i] if i < len(h_codes) else 0
+            # Validate complete numerical metrics per hour
+            if (
+                i >= len(h_temps) or h_temps[i] is None
+                or i >= len(h_precips) or h_precips[i] is None
+                or i >= len(h_codes) or h_codes[i] is None
+                or i >= len(h_winds) or h_winds[i] is None
+            ):
+                raise HTTPException(
+                    status_code=502,
+                    detail=f"Provider returned incomplete hourly forecast metrics at hour index {i}.",
+                )
+            code = int(h_codes[i])
             h_desc, _ = interpret_wmo_code(code)
             hourly_points.append(
                 HourlyForecastPoint(
-                    time=t,
-                    temperature_2m=float(h_temps[i]) if i < len(h_temps) else 0.0,
+                    time=str(t),
+                    temperature_2m=float(h_temps[i]),
                     precipitation_probability=(
                         float(h_probs[i]) if i < len(h_probs) and h_probs[i] is not None else None
                     ),
-                    precipitation=float(h_precips[i]) if i < len(h_precips) else 0.0,
+                    precipitation=float(h_precips[i]),
                     weather_code=code,
                     weather_description=h_desc,
-                    wind_speed_10m=float(h_winds[i]) if i < len(h_winds) else 0.0,
+                    wind_speed_10m=float(h_winds[i]),
+                    cloud_cover=(
+                        float(h_clouds[i]) if i < len(h_clouds) and h_clouds[i] is not None else None
+                    ),
+                    is_day=(
+                        int(h_is_days[i]) if i < len(h_is_days) and h_is_days[i] is not None else None
+                    ),
                 )
             )
 
@@ -227,26 +283,43 @@ class OpenMeteoClient:
         d_sunr = daily_data.get("sunrise", [])
         d_suns = daily_data.get("sunset", [])
 
+        if not d_times:
+            raise HTTPException(
+                status_code=502,
+                detail="Provider returned empty daily forecast array.",
+            )
+
         daily_points: List[DailyForecastPoint] = []
         for i, d in enumerate(d_times):
-            code = d_codes[i] if i < len(d_codes) else 0
+            if (
+                i >= len(d_codes) or d_codes[i] is None
+                or i >= len(d_t_max) or d_t_max[i] is None
+                or i >= len(d_t_min) or d_t_min[i] is None
+                or i >= len(d_p_sum) or d_p_sum[i] is None
+                or i >= len(d_w_gust) or d_w_gust[i] is None
+            ):
+                raise HTTPException(
+                    status_code=502,
+                    detail=f"Provider returned incomplete daily forecast metrics for day index {i} ({d}).",
+                )
+            code = int(d_codes[i])
             d_desc, d_icon = interpret_wmo_code(code)
             daily_points.append(
                 DailyForecastPoint(
-                    date=d,
+                    date=str(d),
                     weather_code=code,
                     weather_description=d_desc,
                     weather_icon=d_icon,
-                    temperature_2m_max=float(d_t_max[i]) if i < len(d_t_max) else 0.0,
-                    temperature_2m_min=float(d_t_min[i]) if i < len(d_t_min) else 0.0,
-                    precipitation_sum=float(d_p_sum[i]) if i < len(d_p_sum) else 0.0,
+                    temperature_2m_max=float(d_t_max[i]),
+                    temperature_2m_min=float(d_t_min[i]),
+                    precipitation_sum=float(d_p_sum[i]),
                     precipitation_probability_max=(
                         float(d_p_prob[i]) if i < len(d_p_prob) and d_p_prob[i] is not None else None
                     ),
-                    wind_gusts_10m_max=float(d_w_gust[i]) if i < len(d_w_gust) else 0.0,
+                    wind_gusts_10m_max=float(d_w_gust[i]),
                     uv_index_max=float(d_uv[i]) if i < len(d_uv) and d_uv[i] is not None else None,
-                    sunrise=d_sunr[i] if i < len(d_sunr) else None,
-                    sunset=d_suns[i] if i < len(d_suns) else None,
+                    sunrise=str(d_sunr[i]) if i < len(d_sunr) and d_sunr[i] else None,
+                    sunset=str(d_suns[i]) if i < len(d_suns) and d_suns[i] else None,
                 )
             )
 

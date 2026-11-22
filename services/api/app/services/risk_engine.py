@@ -24,62 +24,88 @@ def evaluate_forecast_risks(daily_points: List[DailyForecastPoint]) -> RiskEvalu
         gust = day.wind_gusts_10m_max
         date_str = day.date
 
-        # 1. Extreme Rain / Flooding Risk
-        if rain >= 50.0 or (rain >= 35.0 and prob >= 80.0):
+        # 1. Extreme Rain / Inundation Risk
+        # IMD Official Classification: Heavy Rain is >= 64.5 mm/24h; Moderate Rain is 15.6 - 64.4 mm/24h.
+        # PoP (Probability of Precipitation) indicates probability of measurable rain (>=0.1mm) occurring, not accumulation confidence.
+        if rain >= 64.5:
             signals.append(
                 RiskSignal(
                     category="Heavy Rainfall Indicator",
                     severity=RiskSeverityEnum.HIGH,
                     date=date_str,
-                    threshold_basis="IMD Heavy Rainfall Classification (Daily rain >= 35mm with >= 80% confidence or >= 50mm).",
-                    evidence=f"Forecast precipitation: {rain:.1f} mm; peak probability: {prob:.0f}%.",
+                    threshold_basis="IMD Official Heavy Rainfall Standard (24-hour accumulation >= 64.5 mm).",
+                    evidence=f"Forecast precipitation: {rain:.1f} mm; probability of precipitation occurrence: {prob:.0f}%.",
                     recommended_action="Monitor official IMD district nowcasts; avoid waterlogged underpasses, and prepare for localized runoff.",
                 )
             )
-        elif rain >= 20.0:
+        elif rain >= 35.0 and prob >= 80.0:
+            signals.append(
+                RiskSignal(
+                    category="High-Likelihood Precipitation Watch",
+                    severity=RiskSeverityEnum.HIGH,
+                    date=date_str,
+                    threshold_basis="SkyGuard Experimental Inundation Heuristic (24h rain >= 35.0 mm combined with high precipitation probability >= 80%).",
+                    evidence=f"Forecast precipitation: {rain:.1f} mm; probability of precipitation occurrence: {prob:.0f}%.",
+                    recommended_action="Plan travel precautions; inspect local stormwater drains, and monitor official localized advisories.",
+                )
+            )
+        elif rain >= 15.6:
             signals.append(
                 RiskSignal(
                     category="Moderate Rainfall Indicator",
                     severity=RiskSeverityEnum.MODERATE,
                     date=date_str,
-                    threshold_basis="IMD Moderate Rainfall Classification (20mm - 35mm in 24 hours).",
-                    evidence=f"Forecast precipitation: {rain:.1f} mm; peak probability: {prob:.0f}%.",
+                    threshold_basis="IMD Moderate Rainfall Classification (15.6 mm - 64.4 mm in 24 hours).",
+                    evidence=f"Forecast precipitation: {rain:.1f} mm; probability of precipitation occurrence: {prob:.0f}%.",
                     recommended_action="Plan outdoor transit around rain bands; carry waterproof gear and verify local road conditions.",
                 )
             )
 
         # 2. Extreme Heat / Heatwave Risk
-        if t_max >= 43.0:
+        # IMD Operational Heat Wave Manual: In plains, actual Tmax >= 45°C or departure >= 4.5°C when normal > 40°C.
+        if t_max >= 45.0:
             signals.append(
                 RiskSignal(
                     category="Extreme Heatwave Indicator",
                     severity=RiskSeverityEnum.HIGH,
                     date=date_str,
-                    threshold_basis="IMD Severe Heatwave Criteria (Max temp >= 43°C in plains).",
+                    threshold_basis="IMD Heat Wave Classification Manual (Plains max temperature >= 45.0°C).",
                     evidence=f"Forecast maximum temperature: {t_max:.1f}°C.",
                     recommended_action="Avoid direct sun exposure between 11:00 and 15:30; maintain oral rehydration and heed NDMA heatwave advisories.",
+                )
+            )
+        elif t_max >= 40.0:
+            signals.append(
+                RiskSignal(
+                    category="Severe Heat Precaution",
+                    severity=RiskSeverityEnum.HIGH if t_max >= 43.0 else RiskSeverityEnum.MODERATE,
+                    date=date_str,
+                    threshold_basis="IMD Heat Threshold (Plains max temperature >= 40.0°C baseline).",
+                    evidence=f"Forecast maximum temperature: {t_max:.1f}°C.",
+                    recommended_action="Maintain adequate fluid intake, minimize midday field work, and verify vulnerable population precautions.",
                 )
             )
         elif t_max >= 38.0:
             signals.append(
                 RiskSignal(
-                    category="Elevated Heat Indicator",
+                    category="Elevated Thermal Stress Indicator",
                     severity=RiskSeverityEnum.MODERATE,
                     date=date_str,
-                    threshold_basis="WMO & NDMA Elevated Thermal Stress Threshold (Max temp >= 38°C).",
+                    threshold_basis="WMO & NDMA Elevated Thermal Stress Advisory Threshold (Max temp >= 38.0°C).",
                     evidence=f"Forecast maximum temperature: {t_max:.1f}°C.",
                     recommended_action="Ensure adequate ventilation, hydrate frequently, and reschedule strenuous outdoor tasks to early morning.",
                 )
             )
 
         # 3. High Wind Gusts / Squall Risk
-        if gust >= 70.0:
+        # WMO No. 485 / IMD Squall and Gale Classification (Gale >= 62 km/h; Squall >= 50 km/h).
+        if gust >= 62.0:
             signals.append(
                 RiskSignal(
                     category="High Wind Squall Indicator",
                     severity=RiskSeverityEnum.HIGH,
                     date=date_str,
-                    threshold_basis="IMD Gale / Severe Squall Threshold (Peak gusts >= 70 km/h).",
+                    threshold_basis="WMO Beaufort 8 / IMD Gale Warning Standard (Peak gusts >= 62 km/h).",
                     evidence=f"Forecast peak wind gust: {gust:.1f} km/h.",
                     recommended_action="Secure loose outdoor roofing, outdoor hoardings, and temporary structures; avoid standing under trees or power lines.",
                 )
@@ -90,7 +116,7 @@ def evaluate_forecast_risks(daily_points: List[DailyForecastPoint]) -> RiskEvalu
                     category="Brisk Wind Indicator",
                     severity=RiskSeverityEnum.MODERATE,
                     date=date_str,
-                    threshold_basis="IMD Squall Warning Classification (Gusts >= 50 km/h).",
+                    threshold_basis="IMD Squall Advisory Classification (Peak gusts >= 50 km/h).",
                     evidence=f"Forecast peak wind gust: {gust:.1f} km/h.",
                     recommended_action="Exercise caution during two-wheeler travel and near exposed bridges or elevated terrain.",
                 )

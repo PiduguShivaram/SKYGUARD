@@ -7,10 +7,9 @@ import {
   Wind,
   CheckCircle,
   HelpCircle,
-  AlertCircle,
   BookOpen,
 } from "lucide-react";
-import { RiskEvaluationResponse, RiskSignal } from "@/types";
+import { RiskEvaluationResponse } from "@/types";
 
 interface DerivedRiskCardProps {
   riskData: RiskEvaluationResponse | null;
@@ -20,9 +19,9 @@ interface DerivedRiskCardProps {
 export const DerivedRiskCard: React.FC<DerivedRiskCardProps> = ({ riskData, loading }) => {
   if (loading) {
     return (
-      <div className="p-6 bg-slate-800/80 rounded-2xl border border-slate-700 animate-pulse">
-        <div className="h-4 bg-slate-700 rounded w-1/4 mb-3"></div>
-        <div className="h-20 bg-slate-700/50 rounded-xl"></div>
+      <div className="surface-panel p-6 sm:p-7 shadow-card animate-pulse space-y-3">
+        <div className="h-4 bg-[#1A1F2C] rounded-sg w-1/3"></div>
+        <div className="h-20 bg-[#1A1F2C]/60 rounded-sg"></div>
       </div>
     );
   }
@@ -31,80 +30,82 @@ export const DerivedRiskCard: React.FC<DerivedRiskCardProps> = ({ riskData, load
 
   const getRiskIcon = (category: string) => {
     if (category.toLowerCase().includes("heat")) {
-      return <Flame className="w-5 h-5 text-rose-400" />;
+      return <Flame className="w-4 h-4 text-[#F87171]" />;
     }
     if (category.toLowerCase().includes("rain")) {
-      return <CloudRain className="w-5 h-5 text-sky-400" />;
+      return <CloudRain className="w-4 h-4 text-[#60A5FA]" />;
     }
-    return <Wind className="w-5 h-5 text-amber-400" />;
+    return <Wind className="w-4 h-4 text-[#FCD34D]" />;
   };
 
   return (
-    <div className="rounded-2xl bg-slate-800/80 border border-slate-700 p-6 shadow-xl">
+    <div className="surface-panel p-6 sm:p-7 shadow-card">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-4 border-b border-slate-700/60">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-[#2A3141]">
         <div>
           <div className="flex items-center gap-2">
-            <h3 className="text-base font-bold text-white tracking-tight">
+            <h3 className="text-sm font-semibold text-[#E8EDF4] tracking-tight">
               Derived Weather Risk Indicators
             </h3>
-            <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">
+            <span className="text-[10px] font-mono font-medium px-2 py-0.5 rounded-sg bg-[#2563EB]/15 text-[#60A5FA] border border-[#2563EB]/30 uppercase">
               EXPERIMENTAL
             </span>
           </div>
-          <p className="text-xs text-slate-400">
+          <p className="text-xs text-[#8B95A8] mt-0.5">
             Computed from 7-day numerical forecast parameters using documented thresholds
           </p>
         </div>
 
-        <div className="flex items-center gap-1 text-[11px] text-slate-400 bg-slate-900/60 px-2.5 py-1 rounded-lg border border-slate-800">
-          <BookOpen className="w-3.5 h-3.5 text-indigo-400" />
+        <div className="flex items-center gap-1.5 text-xs text-white/70 bg-white/10 px-2.5 py-1 rounded-sg border border-white/15">
+          <BookOpen className="w-3.5 h-3.5 text-white/70" />
           <span>WMO &amp; NDMA Reference Basis</span>
         </div>
       </div>
 
       {/* Disclaimers & Methodology */}
-      <div className="my-3.5 p-3 rounded-xl bg-slate-900/70 border border-slate-700/60 text-xs text-slate-400 leading-relaxed flex items-start gap-2.5">
-        <HelpCircle className="w-4 h-4 text-indigo-400 shrink-0 mt-0.5" />
+      <div className="my-3.5 p-3 rounded-sg bg-white/[0.05] border border-white/15 text-xs text-white/80 leading-relaxed flex items-start gap-2.5">
+        <HelpCircle className="w-4 h-4 text-white/70 shrink-0 mt-0.5" />
         <span>
-          <strong>Transparency Notice:</strong> These indicators are derived algorithmically from raw numerical model outputs. They are NOT certified official warnings, legal disaster directives, or probabilistic machine learning claims.
+          <strong className="text-white font-medium">Transparency Notice:</strong> These indicators are derived algorithmically from raw numerical model outputs. They are NOT certified official warnings, legal disaster directives, or probabilistic machine learning claims.
         </span>
       </div>
 
       {/* Signals List */}
       {riskData.signals.length > 0 ? (
-        <div className="space-y-3 mt-4">
+        <div className="space-y-2.5 mt-3">
           {riskData.signals.map((signal, idx) => (
             <div
               key={`${signal.category}-${signal.date}-${idx}`}
-              className={`p-4 rounded-xl border transition-all ${
+              className={`p-3.5 rounded-sg border-l-4 border-y border-r transition-colors ${
                 signal.severity === "High"
-                  ? "bg-rose-950/20 border-rose-500/30"
-                  : "bg-amber-950/20 border-amber-500/30"
+                  ? "bg-red-950/40 border-l-[#DC2626] border-red-500/30"
+                  : "bg-amber-950/40 border-l-[#D97706] border-amber-500/30"
               }`}
             >
               <div className="flex items-start justify-between gap-3">
                 <div className="flex items-center gap-2.5">
                   <div
-                    className={`p-2 rounded-lg ${
-                      signal.severity === "High" ? "bg-rose-500/10" : "bg-amber-500/10"
+                    className={`p-1.5 rounded-sg ${
+                      signal.severity === "High"
+                        ? "bg-[#DC2626]/20 text-[#F87171]"
+                        : "bg-[#D97706]/20 text-[#FCD34D]"
                     }`}
                   >
                     {getRiskIcon(signal.category)}
                   </div>
                   <div>
-                    <h4 className="text-sm font-bold text-white">{signal.category}</h4>
-                    <p className="text-xs text-slate-400">
-                      Anticipated Date: <span className="text-slate-300 font-mono">{signal.date}</span>
+                    <h4 className="text-xs font-semibold text-white">{signal.category}</h4>
+                    <p className="text-[11px] text-white/70">
+                      Anticipated Date: <span className="text-white font-mono">{signal.date}</span>
                     </p>
                   </div>
                 </div>
 
                 <span
-                  className={`text-xs font-bold px-2 py-0.5 rounded-full ${
+                  className={`text-[11px] font-mono font-medium px-2 py-0.5 rounded-sg ${
                     signal.severity === "High"
-                      ? "bg-rose-500/20 text-rose-300 border border-rose-500/40"
-                      : "bg-amber-500/20 text-amber-300 border border-amber-500/40"
+                      ? "bg-[#DC2626]/20 text-[#F87171] border border-[#DC2626]/40"
+                      : "bg-[#D97706]/20 text-[#FCD34D] border border-[#D97706]/40"
                   }`}
                 >
                   {signal.severity}
@@ -112,32 +113,25 @@ export const DerivedRiskCard: React.FC<DerivedRiskCardProps> = ({ riskData, load
               </div>
 
               {/* Physical Evidence */}
-              <div className="mt-3 text-xs text-slate-300 bg-slate-900/60 p-2.5 rounded-lg border border-slate-800">
+              <div className="mt-2.5 text-xs text-white bg-black/20 p-2.5 rounded-sg border border-white/10 space-y-1">
                 <p>
-                  <strong className="text-slate-400">Physical Evidence:</strong> {signal.evidence}
+                  <strong className="text-white/70 font-medium">Physical Evidence:</strong> {signal.evidence}
                 </p>
-                <p className="mt-1 text-[11px] text-slate-400">
-                  <strong className="text-slate-500">Threshold Basis:</strong> {signal.threshold_basis}
+                <p className="text-[11px] text-white/70 font-mono">
+                  <strong className="text-white/50">Threshold Basis:</strong> {signal.threshold_basis}
                 </p>
-              </div>
-
-              {/* Precaution */}
-              <div className="mt-2 text-xs text-slate-300 flex items-start gap-1.5">
-                <span className="font-semibold text-blue-400 shrink-0">Safe Precaution:</span>
-                <span>{signal.recommended_action}</span>
               </div>
             </div>
           ))}
         </div>
       ) : (
-        <div className="mt-4 p-4 rounded-xl bg-slate-900/50 border border-slate-700/60 flex items-center gap-3">
-          <CheckCircle className="w-5 h-5 text-emerald-400 shrink-0" />
-          <div>
-            <p className="text-sm font-semibold text-white">No Extreme Derived Thresholds Exceeded</p>
-            <p className="text-xs text-slate-400">
-              Projected rainfall, temperature, and wind gusts over the next 7 days remain below moderate/high hazard criteria.
-            </p>
-          </div>
+        <div className="mt-3 p-4 rounded-sg bg-white/[0.04] border border-white/10 text-center space-y-1">
+          <p className="text-xs font-medium text-white">
+            No Forecast-Threshold Triggers Detected
+          </p>
+          <p className="text-[11px] text-white/60">
+            Current 7-day model parameters do not exceed extreme heat, heavy precipitation, or severe wind thresholds.
+          </p>
         </div>
       )}
     </div>

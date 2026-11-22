@@ -5,20 +5,16 @@ import {
   Bell,
   BellOff,
   ShieldCheck,
-  AlertTriangle,
   X,
-  CheckCircle2,
   Send,
   Sliders,
-  MapPin,
   Info,
-  Radio,
-  RefreshCw,
+  Smartphone,
+  ExternalLink,
 } from "lucide-react";
 import {
   AlertCategory,
   AlertSeverity,
-  PushPreferencesResponse,
   PushPermissionStatus,
 } from "@/types";
 import {
@@ -28,7 +24,12 @@ import {
   updatePushPreferences,
   unsubscribePush,
   sendDiagnosticPushTest,
+  sendTelegramTestAlert,
+  requestTelegramVerification,
+  confirmTelegramVerificationCode,
+  getTelegramBotInfo,
 } from "@/lib/api";
+import { syncUserAlertPreferences } from "@/lib/supabase";
 
 interface NotificationSettingsModalProps {
   isOpen: boolean;
@@ -67,19 +68,115 @@ export const NotificationSettingsModal: React.FC<NotificationSettingsModalProps>
   // Preferences
   const [countryCode, setCountryCode] = useState<string>(selectedCountry || "IN");
   const [radiusKm, setRadiusKm] = useState<number>(500);
+  const [wantsCountryWide, setWantsCountryWide] = useState<boolean>(false);
   const [selectedCategories, setSelectedCategories] = useState<AlertCategory[]>([
     "OFFICIAL_CAP_WARNING",
     "GDACS_DISASTER_ALERT",
   ]);
   const [minSeverity, setMinSeverity] = useState<AlertSeverity>("Moderate");
+  const [loadingPreferences, setLoadingPreferences] = useState<boolean>(false);
 
   const [loading, setLoading] = useState<boolean>(false);
   const [testStatus, setTestStatus] = useState<string | null>(null);
   const [feedback, setFeedback] = useState<string | null>(null);
 
+  // Telegram Mobile State & Ownership Verification
+  const [telegramChatId, setTelegramChatId] = useState<string>("");
+  const [telegramVerificationCode, setTelegramVerificationCode] = useState<string>("");
+  const [telegramStep, setTelegramStep] = useState<"idle" | "code_sent" | "verified">("idle");
+  const [telegramAuthToken, setTelegramAuthToken] = useState<string | null>(null);
+  const [telegramTestStatus, setTelegramTestStatus] = useState<string | null>(null);
+  const [telegramLoading, setTelegramLoading] = useState<boolean>(false);
+  const [botInfo, setBotInfo] = useState<{ bot_username: string; bot_url: string; is_configured: boolean } | null>(null);
+
+  const handleRequestTelegramCode = async () => {
+    if (!telegramChatId.trim()) return;
+    setTelegramLoading(true);
+    setTelegramTestStatus("Dispatching 6-digit verification code to your Telegram chat...");
+    try {
+      await requestTelegramVerification(
+        telegramChatId.trim(),
+        selectedLocationLabel || "My City",
+        selectedLatitude,
+        selectedLongitude
+      );
+      setTelegramStep("code_sent");
+      setTelegramTestStatus(`✓ Challenge code sent! Check your Telegram messages in @skyguard_alerts_bot.`);
+    } catch (err: any) {
+      setTelegramTestStatus(`Failed to send code: ${err.message}`);
+    } finally {
+      setTelegramLoading(false);
+    }
+  };
+
+  const handleVerifyTelegramCode = async () => {
+    if (!telegramChatId.trim() || !telegramVerificationCode.trim()) return;
+    setTelegramLoading(true);
+    setTelegramTestStatus("Validating challenge code...");
+    try {
+      const res = await confirmTelegramVerificationCode(
+        telegramChatId.trim(),
+        telegramVerificationCode.trim(),
+        selectedLocationLabel || "My City",
+        selectedLatitude,
+        selectedLongitude
+      );
+      setTelegramAuthToken(res.auth_token);
+      setTelegramStep("verified");
+      localStorage.setItem("skyguard_telegram_chat_id", telegramChatId.trim());
+      localStorage.setItem("skyguard_telegram_token", res.auth_token);
+      syncUserAlertPreferences({
+        min_severity: minSeverity,
+        wants_telegram: true,
+        telegram_chat_id: telegramChatId.trim(),
+        wants_push: isSubscribed,
+      }).catch(() => {});
+      setTelegramTestStatus(`✓ Mobile device verified & ownership confirmed! Ready for live alerts.`);
+    } catch (err: any) {
+      setTelegramTestStatus(`Verification failed: ${err.message}`);
+    } finally {
+      setTelegramLoading(false);
+    }
+  };
+
+  const handleSendTelegramTest = async () => {
+    if (!telegramChatId.trim()) return;
+    setTelegramLoading(true);
+    setTelegramTestStatus("Sending diagnostic check to verified device...");
+    try {
+      const res = await sendTelegramTestAlert(
+        telegramChatId.trim(),
+        selectedLocationLabel || "My City",
+        telegramAuthToken || undefined
+      );
+      setTelegramTestStatus(`✓ Diagnostic delivered to Telegram! (${res.message})`);
+    } catch (err: any) {
+      setTelegramTestStatus(`Delivery notice: ${err.message}`);
+    } finally {
+      setTelegramLoading(false);
+    }
+  };
+
+  // Escape key support
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [onClose]);
+
   // Load subscription state from localStorage on mount
   useEffect(() => {
     if (typeof window === "undefined") return;
+
+    let isActive = true;
+
+    getTelegramBotInfo()
+      .then((info) => {
+        if (isActive) setBotInfo(info);
+      })
+      .catch(() => {});
 
     if (!("Notification" in window) || !("serviceWorker" in navigator) || !("PushManager" in window)) {
       setIsSupported(false);
@@ -91,33 +188,54 @@ export const NotificationSettingsModal: React.FC<NotificationSettingsModalProps>
 
     const savedSubId = localStorage.getItem("skyguard_push_sub_id");
     const savedToken = localStorage.getItem("skyguard_push_token");
+    const savedTelegramChatId = localStorage.getItem("skyguard_telegram_chat_id");
+    const savedTelegramToken = localStorage.getItem("skyguard_telegram_token");
+
+    if (savedTelegramChatId && savedTelegramToken) {
+      setTelegramChatId(savedTelegramChatId);
+      setTelegramAuthToken(savedTelegramToken);
+      setTelegramStep("verified");
+    }
 
     if (savedSubId && savedToken) {
       setSubscriptionId(savedSubId);
       setPossessionToken(savedToken);
       setIsSubscribed(true);
+      setLoadingPreferences(true);
 
-      // Fetch fresh preferences from backend
       getPushPreferences(savedToken)
         .then((prefs) => {
+          if (!isActive) return;
           if (prefs.country_code) setCountryCode(prefs.country_code);
           if (prefs.radius_km) setRadiusKm(prefs.radius_km);
+          if (prefs.wants_country_wide !== undefined) setWantsCountryWide(prefs.wants_country_wide);
           if (prefs.categories) setSelectedCategories(prefs.categories);
           if (prefs.min_severity) setMinSeverity(prefs.min_severity);
           setIsSubscribed(prefs.is_active);
         })
-        .catch(() => {
-          // Token expired or invalid
-          localStorage.removeItem("skyguard_push_sub_id");
-          localStorage.removeItem("skyguard_push_token");
-          setIsSubscribed(false);
+        .catch((err) => {
+          if (!isActive) return;
+          const msg = (err?.message || "").toLowerCase();
+          if (msg.includes("401") || msg.includes("403") || msg.includes("token") || msg.includes("unauthorized")) {
+            localStorage.removeItem("skyguard_push_sub_id");
+            localStorage.removeItem("skyguard_push_token");
+            setIsSubscribed(false);
+          } else {
+            console.warn("Transient error loading push preferences, retaining credentials:", err);
+          }
+        })
+        .finally(() => {
+          if (isActive) setLoadingPreferences(false);
         });
     }
+
+    return () => {
+      isActive = false;
+    };
   }, [isOpen]);
 
   if (!isOpen) return null;
 
-  // Handle explicit permission and subscription
   const handleEnableNotifications = async () => {
     setLoading(true);
     setFeedback(null);
@@ -128,7 +246,6 @@ export const NotificationSettingsModal: React.FC<NotificationSettingsModalProps>
         throw new Error("Push notifications are not supported by this browser.");
       }
 
-      // Request browser permission explicitly upon user click
       const permResult = await Notification.requestPermission();
       setPermission(permResult as PushPermissionStatus);
 
@@ -136,15 +253,12 @@ export const NotificationSettingsModal: React.FC<NotificationSettingsModalProps>
         throw new Error("Notification permission was denied or dismissed.");
       }
 
-      // Register Service Worker
       const registration = await navigator.serviceWorker.register("/sw.js");
       await navigator.serviceWorker.ready;
 
-      // Get VAPID public key from backend
       const vapidPublicKey = await getVapidPublicKey();
       const convertedVapidKey = urlBase64ToUint8Array(vapidPublicKey);
 
-      // Subscribe with browser PushManager
       const pushSubscription = await registration.pushManager.subscribe({
         userVisibleOnly: true,
         applicationServerKey: convertedVapidKey,
@@ -155,7 +269,8 @@ export const NotificationSettingsModal: React.FC<NotificationSettingsModalProps>
         throw new Error("Browser returned incomplete push subscription keys.");
       }
 
-      // Register with SkyGuard backend
+      const savedToken = localStorage.getItem("skyguard_push_token") || undefined;
+
       const res = await subscribePush({
         endpoint: subJson.endpoint,
         keys: {
@@ -166,11 +281,12 @@ export const NotificationSettingsModal: React.FC<NotificationSettingsModalProps>
         latitude: selectedLatitude,
         longitude: selectedLongitude,
         radius_km: radiusKm,
+        wants_country_wide: wantsCountryWide,
+        existing_token: savedToken,
         categories: selectedCategories,
         min_severity: minSeverity,
       });
 
-      // Persist possession credentials securely in client localStorage
       localStorage.setItem("skyguard_push_sub_id", res.subscription_id);
       localStorage.setItem("skyguard_push_token", res.possession_token);
       setSubscriptionId(res.subscription_id);
@@ -186,7 +302,6 @@ export const NotificationSettingsModal: React.FC<NotificationSettingsModalProps>
     }
   };
 
-  // Handle Unsubscribe
   const handleUnsubscribe = async () => {
     setLoading(true);
     setFeedback(null);
@@ -196,7 +311,6 @@ export const NotificationSettingsModal: React.FC<NotificationSettingsModalProps>
         await unsubscribePush(subscriptionId, possessionToken);
       }
 
-      // Unsubscribe locally in browser
       if ("serviceWorker" in navigator) {
         const registration = await navigator.serviceWorker.ready;
         const sub = await registration.pushManager.getSubscription();
@@ -219,7 +333,6 @@ export const NotificationSettingsModal: React.FC<NotificationSettingsModalProps>
     }
   };
 
-  // Handle Update Preferences
   const handleSavePreferences = async () => {
     if (!possessionToken) return;
     setLoading(true);
@@ -229,9 +342,16 @@ export const NotificationSettingsModal: React.FC<NotificationSettingsModalProps>
       await updatePushPreferences(possessionToken, {
         country_code: countryCode.trim() ? countryCode.toUpperCase() : undefined,
         radius_km: radiusKm,
+        wants_country_wide: wantsCountryWide,
         categories: selectedCategories,
         min_severity: minSeverity,
       });
+      syncUserAlertPreferences({
+        min_severity: minSeverity,
+        wants_telegram: !!telegramAuthToken,
+        telegram_chat_id: telegramChatId.trim() || undefined,
+        wants_push: isSubscribed,
+      }).catch(() => {});
       setFeedback("Preferences updated and synchronized with SkyGuard server.");
     } catch (err: any) {
       setFeedback(`Failed to update preferences: ${err.message}`);
@@ -240,7 +360,6 @@ export const NotificationSettingsModal: React.FC<NotificationSettingsModalProps>
     }
   };
 
-  // Dispatch Diagnostic Test Notification
   const handleSendDiagnosticTest = async () => {
     if (!possessionToken) return;
     setLoading(true);
@@ -267,38 +386,193 @@ export const NotificationSettingsModal: React.FC<NotificationSettingsModalProps>
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-fadeIn">
-      <div className="bg-slate-900 border border-slate-700/80 rounded-2xl max-w-lg w-full p-6 shadow-2xl space-y-5 max-h-[90vh] overflow-y-auto">
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="push-modal-title"
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm animate-in fade-in duration-150"
+    >
+      <div className="surface-panel rounded-sg max-w-lg w-full p-6 shadow-dialog space-y-4 max-h-[90vh] overflow-y-auto">
         {/* Header */}
-        <div className="flex items-center justify-between pb-4 border-b border-slate-800">
+        <div className="flex items-center justify-between pb-3.5 border-b border-border-subtle">
           <div className="flex items-center gap-2.5">
-            <div className="p-2 bg-blue-600/20 text-blue-400 rounded-xl border border-blue-500/30">
+            <div className="p-2 bg-brand-fill/15 text-brand-text rounded-sg">
               <Bell className="w-5 h-5" />
             </div>
             <div>
-              <h3 className="text-base font-bold text-white tracking-tight">
+              <h3 id="push-modal-title" className="text-base font-semibold text-white tracking-tight">
                 Global Push Notification Center
               </h3>
-              <p className="text-xs text-slate-400">
+              <p className="text-xs text-text-muted">
                 Privacy-preserving alerts for official WMO CAP &amp; GDACS disasters
               </p>
             </div>
           </div>
           <button
             onClick={onClose}
-            className="p-1.5 text-slate-400 hover:text-white rounded-lg hover:bg-slate-800 transition-colors"
+            className="p-1.5 text-text-muted hover:text-white rounded-sg hover:bg-surface-elevated transition-colors min-h-[44px] min-w-[44px] flex items-center justify-center"
+            aria-label="Close dialog"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
 
+        {/* Mobile Phone (Telegram) Direct Alerts */}
+        <div className="p-4 rounded-sg bg-surface-base border border-border-subtle space-y-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <div className="p-1.5 bg-brand-fill/20 text-brand-text rounded-sg">
+                <Smartphone className="w-4 h-4" />
+              </div>
+              <div>
+                <h4 className="text-xs font-semibold text-white tracking-wide">
+                  Direct Mobile Alerts (Telegram Bot)
+                </h4>
+                <p className="text-[11px] text-text-muted">
+                  Instant push to mobile phones with vibration &amp; sound (100% Free)
+                </p>
+              </div>
+            </div>
+            <span
+              className={`text-[10px] font-mono font-medium px-2 py-0.5 rounded-sg border ${
+                botInfo?.is_configured
+                  ? "bg-emerald-500/15 text-emerald-300 border-emerald-500/25"
+                  : "bg-amber-500/15 text-amber-300 border-amber-500/25"
+              }`}
+            >
+              {botInfo?.is_configured ? "ACTIVE BOT" : "BOT UNCONFIGURED"}
+            </span>
+          </div>
+
+          <a
+            href={botInfo?.bot_url || "https://t.me/skyguard_alerts_bot"}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="w-full flex items-center justify-center gap-2 py-2.5 px-4 bg-brand-fill hover:bg-brand-hover text-white rounded-sg text-xs font-semibold transition-all shadow-sm group min-h-[44px]"
+          >
+            <Send className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
+            <span>Connect Phone: @{botInfo?.bot_username || "skyguard_alerts_bot"}</span>
+            <ExternalLink className="w-3.5 h-3.5 opacity-70" />
+          </a>
+
+          {/* Verified Mobile Phone Ownership Flow */}
+          <div className="pt-2 border-t border-border-subtle space-y-2.5">
+            <div className="flex items-center justify-between">
+              <span className="text-[10px] font-medium text-text-muted uppercase tracking-wider">
+                {telegramStep === "verified" ? "Verified Mobile Device" : "Link Mobile Device (Proof of Ownership)"}
+              </span>
+              {telegramStep === "verified" && (
+                <span className="text-[10px] font-mono text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-sg border border-emerald-500/20">
+                  OWNERSHIP CONFIRMED
+                </span>
+              )}
+            </div>
+
+            {telegramStep === "idle" && (
+              <div className="space-y-1.5">
+                <div className="flex items-center gap-2">
+                  <input
+                    type="text"
+                    value={telegramChatId}
+                    onChange={(e) => setTelegramChatId(e.target.value)}
+                    placeholder="Enter Telegram Chat ID (e.g. 12345678)"
+                    className="flex-1 px-3 py-2 bg-surface-base border border-border-subtle rounded-sg text-xs text-white placeholder:text-text-muted font-mono focus:outline-none focus:ring-1 focus:ring-brand-fill min-h-[44px]"
+                  />
+                  <button
+                    type="button"
+                    onClick={handleRequestTelegramCode}
+                    disabled={telegramLoading || !telegramChatId.trim()}
+                    className="px-3.5 py-2 bg-brand-fill hover:bg-brand-hover disabled:opacity-50 text-white rounded-sg text-xs font-medium transition-colors shrink-0 flex items-center gap-1.5 min-h-[44px]"
+                  >
+                    <span>{telegramLoading ? "Sending..." : "Send Code"}</span>
+                  </button>
+                </div>
+                <p className="text-[10px] text-text-muted">
+                  To prevent unauthorized subscriptions, a 6-digit challenge code will be sent to this Telegram chat.
+                  Make sure you have opened <strong className="text-white">@{botInfo?.bot_username || "skyguard_alerts_bot"}</strong> and tapped &quot;Start&quot;.
+                </p>
+              </div>
+            )}
+
+            {telegramStep === "code_sent" && (
+              <div className="space-y-1.5">
+                <div className="flex items-center gap-2">
+                  <input
+                    type="text"
+                    value={telegramVerificationCode}
+                    onChange={(e) => setTelegramVerificationCode(e.target.value)}
+                    placeholder="Enter 6-digit code"
+                    maxLength={6}
+                    className="flex-1 px-3 py-2 bg-surface-base border border-border-subtle rounded-sg text-xs text-white placeholder:text-text-muted font-mono tracking-widest text-center focus:outline-none focus:ring-1 focus:ring-brand-fill min-h-[44px]"
+                  />
+                  <button
+                    type="button"
+                    onClick={handleVerifyTelegramCode}
+                    disabled={telegramLoading || telegramVerificationCode.trim().length !== 6}
+                    className="px-3.5 py-2 bg-brand-fill hover:bg-brand-hover disabled:opacity-50 text-white rounded-sg text-xs font-medium transition-colors shrink-0 min-h-[44px]"
+                  >
+                    <span>{telegramLoading ? "Verifying..." : "Confirm Link"}</span>
+                  </button>
+                </div>
+                <div className="flex items-center justify-between text-[10px]">
+                  <span className="text-text-muted">Target Chat: {telegramChatId}</span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setTelegramStep("idle");
+                      setTelegramVerificationCode("");
+                    }}
+                    className="text-brand-text hover:underline"
+                  >
+                    Change Chat ID
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {telegramStep === "verified" && (
+              <div className="space-y-2">
+                <div className="flex items-center justify-between p-2 rounded-sg bg-surface-base border border-border-subtle text-xs font-mono">
+                  <span className="text-text-primary">Chat ID: {telegramChatId}</span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setTelegramStep("idle");
+                      setTelegramAuthToken(null);
+                      localStorage.removeItem("skyguard_telegram_chat_id");
+                      localStorage.removeItem("skyguard_telegram_token");
+                    }}
+                    className="text-[10px] text-text-muted hover:text-rose-400 transition-colors"
+                  >
+                    Unlink
+                  </button>
+                </div>
+                <button
+                  type="button"
+                  onClick={handleSendTelegramTest}
+                  disabled={telegramLoading}
+                  className="w-full py-2 bg-surface-elevated hover:bg-surface-base border border-border-subtle disabled:opacity-50 text-white rounded-sg text-xs font-medium transition-colors flex items-center justify-center gap-1.5 min-h-[44px]"
+                >
+                  <span>{telegramLoading ? "Dispatching..." : "Send Verified Diagnostic Buzz to Phone"}</span>
+                </button>
+              </div>
+            )}
+
+            {telegramTestStatus && (
+              <p className="text-[11px] text-text-primary bg-surface-base p-2.5 rounded-sg border border-border-subtle font-mono leading-relaxed">
+                {telegramTestStatus}
+              </p>
+            )}
+          </div>
+        </div>
+
         {/* Permission & Status Bar */}
-        <div className="p-3.5 rounded-xl bg-slate-850 border border-slate-800 flex items-center justify-between">
+        <div className="p-3.5 rounded-sg bg-surface-base border border-border-subtle flex items-center justify-between">
           <div>
-            <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">
+            <span className="text-[10px] uppercase font-medium text-text-muted tracking-wider">
               Browser Permission
             </span>
-            <div className="flex items-center gap-1.5 mt-0.5">
+            <div className="flex items-center gap-2 mt-0.5">
               <span
                 className={`w-2 h-2 rounded-full ${
                   permission === "granted"
@@ -308,9 +582,9 @@ export const NotificationSettingsModal: React.FC<NotificationSettingsModalProps>
                     : "bg-amber-400"
                 }`}
               />
-              <span className="text-xs font-bold text-white capitalize">{permission}</span>
+              <span className="text-xs font-semibold text-white capitalize">{permission}</span>
               {isSubscribed && (
-                <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 ml-1">
+                <span className="text-[10px] font-mono font-medium px-2 py-0.5 rounded-sg bg-emerald-500/15 text-emerald-300 border border-emerald-500/25 ml-1">
                   DEVICE ACTIVE
                 </span>
               )}
@@ -321,7 +595,7 @@ export const NotificationSettingsModal: React.FC<NotificationSettingsModalProps>
             <button
               onClick={handleEnableNotifications}
               disabled={loading || permission === "denied"}
-              className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white rounded-xl text-xs font-semibold shadow-sm transition-all"
+              className="flex items-center gap-1.5 px-3 py-2 bg-brand-fill hover:bg-brand-hover disabled:opacity-50 text-white rounded-sg text-xs font-medium transition-colors min-h-[44px]"
             >
               <Bell className="w-3.5 h-3.5" />
               <span>Enable Notifications</span>
@@ -330,7 +604,7 @@ export const NotificationSettingsModal: React.FC<NotificationSettingsModalProps>
             <button
               onClick={handleUnsubscribe}
               disabled={loading}
-              className="flex items-center gap-1.5 px-3 py-1.5 bg-rose-600/20 hover:bg-rose-600/30 text-rose-300 border border-rose-500/30 rounded-xl text-xs font-semibold transition-all"
+              className="flex items-center gap-1.5 px-3 py-2 bg-rose-500/15 hover:bg-rose-500/25 text-rose-300 border border-rose-500/30 rounded-sg text-xs font-medium transition-colors min-h-[44px]"
             >
               <BellOff className="w-3.5 h-3.5" />
               <span>Disable</span>
@@ -341,10 +615,10 @@ export const NotificationSettingsModal: React.FC<NotificationSettingsModalProps>
         {/* Feedback message */}
         {feedback && (
           <div
-            className={`p-3 rounded-xl text-xs flex items-center gap-2 ${
+            className={`p-3 rounded-sg text-xs flex items-center gap-2 ${
               feedback.startsWith("Error")
-                ? "bg-rose-950/40 text-rose-300 border border-rose-500/40"
-                : "bg-emerald-950/40 text-emerald-300 border border-emerald-500/40"
+                ? "bg-rose-950/20 text-rose-300 border border-rose-500/30"
+                : "bg-emerald-950/20 text-emerald-300 border border-emerald-500/30"
             }`}
           >
             <Info className="w-4 h-4 shrink-0" />
@@ -352,17 +626,17 @@ export const NotificationSettingsModal: React.FC<NotificationSettingsModalProps>
           </div>
         )}
 
-        {/* Notification Preferences (Configurable when subscribed) */}
-        <div className="space-y-4 pt-1">
-          <div className="flex items-center gap-1.5 text-xs font-bold text-slate-300 uppercase tracking-wider">
-            <Sliders className="w-4 h-4 text-blue-400" />
+        {/* Preferences */}
+        <div className="space-y-3.5 pt-1">
+          <div className="flex items-center gap-1.5 text-xs font-semibold text-text-primary uppercase tracking-wider">
+            <Sliders className="w-4 h-4 text-brand-text" />
             <span>Notification Filters &amp; Coverage</span>
           </div>
 
           {/* Country Code & Radius */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
-              <label className="block text-[11px] font-semibold text-slate-400 mb-1">
+              <label className="block text-[11px] font-medium text-text-muted mb-1">
                 Country Code (ISO 2-letter)
               </label>
               <input
@@ -371,18 +645,18 @@ export const NotificationSettingsModal: React.FC<NotificationSettingsModalProps>
                 value={countryCode}
                 onChange={(e) => setCountryCode(e.target.value.toUpperCase())}
                 placeholder="e.g. IN, US, DE"
-                className="w-full px-3 py-2 bg-slate-800 border border-slate-750 rounded-xl text-xs text-white uppercase font-mono focus:outline-none focus:ring-1 focus:ring-blue-500"
+                className="w-full px-3 py-2 bg-surface-base border border-border-subtle rounded-sg text-xs text-white uppercase font-mono focus:outline-none focus:ring-1 focus:ring-brand-fill min-h-[44px]"
               />
             </div>
 
             <div>
-              <label className="block text-[11px] font-semibold text-slate-400 mb-1">
+              <label className="block text-[11px] font-medium text-text-muted mb-1">
                 Coordinate Proximity Radius
               </label>
               <select
                 value={radiusKm}
                 onChange={(e) => setRadiusKm(Number(e.target.value))}
-                className="w-full px-3 py-2 bg-slate-800 border border-slate-750 rounded-xl text-xs text-white focus:outline-none focus:ring-1 focus:ring-blue-500"
+                className="w-full px-3 py-2 bg-surface-base border border-border-subtle rounded-sg text-xs text-white focus:outline-none focus:ring-1 focus:ring-brand-fill min-h-[44px]"
               >
                 <option value={100}>Within 100 km</option>
                 <option value={300}>Within 300 km</option>
@@ -392,37 +666,57 @@ export const NotificationSettingsModal: React.FC<NotificationSettingsModalProps>
             </div>
           </div>
 
-          {/* Alert Categories */}
+          {/* Country-Wide Bulletins Toggle */}
+          <div className="p-3 rounded-sg bg-surface-base border border-border-subtle space-y-1">
+            <label className="flex items-start gap-2.5 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={wantsCountryWide}
+                onChange={(e) => setWantsCountryWide(e.target.checked)}
+                className="mt-0.5 rounded-sg text-brand-fill focus:ring-brand-fill bg-surface-base border-border-subtle"
+              />
+              <div>
+                <span className="text-xs font-medium text-white">
+                  Receive Country-Wide Emergency Bulletins
+                </span>
+                <p className="text-[11px] text-text-muted mt-0.5 leading-relaxed">
+                  Opt in to receive official national emergency bulletins affecting your entire country even if an alert polygon is outside your immediate coordinates. When disabled, you only receive localized notifications verified within your coordinates.
+                </p>
+              </div>
+            </label>
+          </div>
+
+          {/* Categories */}
           <div>
-            <label className="block text-[11px] font-semibold text-slate-400 mb-1.5">
+            <label className="block text-[11px] font-medium text-text-muted mb-1">
               Alert Categories
             </label>
-            <div className="space-y-2">
-              <label className="flex items-center gap-2 p-2.5 rounded-xl bg-slate-850/60 border border-slate-800 cursor-pointer hover:bg-slate-800 transition-colors">
+            <div className="space-y-1.5">
+              <label className="flex items-center gap-2 p-2.5 rounded-sg bg-surface-base border border-border-subtle cursor-pointer hover:bg-surface-elevated transition-colors">
                 <input
                   type="checkbox"
                   checked={selectedCategories.includes("OFFICIAL_CAP_WARNING")}
                   onChange={() => toggleCategory("OFFICIAL_CAP_WARNING")}
-                  className="rounded text-blue-600 focus:ring-blue-500 bg-slate-900 border-slate-700"
+                  className="rounded-sg text-brand-fill focus:ring-brand-fill bg-surface-base border-border-subtle"
                 />
                 <div className="text-xs">
-                  <span className="font-semibold text-white">Official CAP Severe Warnings</span>
-                  <p className="text-[10px] text-slate-400">
+                  <span className="font-medium text-white">Official CAP Severe Warnings</span>
+                  <p className="text-[10px] text-text-muted">
                     National meteorological bulletins (WMO SWIC / Member States)
                   </p>
                 </div>
               </label>
 
-              <label className="flex items-center gap-2 p-2.5 rounded-xl bg-slate-850/60 border border-slate-800 cursor-pointer hover:bg-slate-800 transition-colors">
+              <label className="flex items-center gap-2 p-2.5 rounded-sg bg-surface-base border border-border-subtle cursor-pointer hover:bg-surface-elevated transition-colors">
                 <input
                   type="checkbox"
                   checked={selectedCategories.includes("GDACS_DISASTER_ALERT")}
                   onChange={() => toggleCategory("GDACS_DISASTER_ALERT")}
-                  className="rounded text-blue-600 focus:ring-blue-500 bg-slate-900 border-slate-700"
+                  className="rounded-sg text-brand-fill focus:ring-brand-fill bg-surface-base border-border-subtle"
                 />
                 <div className="text-xs">
-                  <span className="font-semibold text-white">GDACS Multi-Hazard Disasters</span>
-                  <p className="text-[10px] text-slate-400">
+                  <span className="font-medium text-white">GDACS Multi-Hazard Disasters</span>
+                  <p className="text-[10px] text-text-muted">
                     Tropical cyclones, major floods, earthquakes (UN OCHA / EC)
                   </p>
                 </div>
@@ -432,7 +726,7 @@ export const NotificationSettingsModal: React.FC<NotificationSettingsModalProps>
 
           {/* Minimum Severity */}
           <div>
-            <label className="block text-[11px] font-semibold text-slate-400 mb-1.5">
+            <label className="block text-[11px] font-medium text-text-muted mb-1">
               Minimum Severity Threshold
             </label>
             <div className="grid grid-cols-3 gap-2">
@@ -441,10 +735,10 @@ export const NotificationSettingsModal: React.FC<NotificationSettingsModalProps>
                   key={sev}
                   type="button"
                   onClick={() => setMinSeverity(sev)}
-                  className={`py-1.5 px-2 rounded-xl text-xs font-semibold border transition-all ${
+                  className={`py-2 px-2 rounded-sg text-xs font-medium border transition-colors min-h-[44px] ${
                     minSeverity === sev
-                      ? "bg-blue-600/30 border-blue-500 text-blue-200"
-                      : "bg-slate-800 border-slate-750 text-slate-400 hover:text-white"
+                      ? "bg-brand-fill text-white border-brand-fill font-semibold"
+                      : "bg-surface-base border-border-subtle text-text-muted hover:text-white"
                   }`}
                 >
                   {sev}+
@@ -458,16 +752,16 @@ export const NotificationSettingsModal: React.FC<NotificationSettingsModalProps>
             <div className="flex flex-col sm:flex-row items-center gap-2 pt-2">
               <button
                 onClick={handleSavePreferences}
-                disabled={loading}
-                className="w-full sm:flex-1 py-2 bg-slate-800 hover:bg-slate-750 border border-slate-700 text-white rounded-xl text-xs font-semibold transition-colors"
+                disabled={loading || loadingPreferences}
+                className="w-full sm:flex-1 py-2.5 bg-brand-fill hover:bg-brand-hover text-white rounded-sg text-xs font-medium transition-colors disabled:opacity-50 min-h-[44px]"
               >
-                Save Preferences
+                {loadingPreferences ? "Loading Preferences..." : "Save Preferences"}
               </button>
 
               <button
                 onClick={handleSendDiagnosticTest}
                 disabled={loading}
-                className="w-full sm:w-auto px-4 py-2 bg-blue-600/20 hover:bg-blue-600/30 text-blue-300 border border-blue-500/30 rounded-xl text-xs font-semibold transition-colors flex items-center justify-center gap-1.5"
+                className="w-full sm:w-auto px-4 py-2.5 bg-surface-elevated hover:bg-surface-base text-text-primary border border-border-subtle rounded-sg text-xs font-medium transition-colors flex items-center justify-center gap-1.5 min-h-[44px]"
                 title="Send technical diagnostic test notification with no weather claims"
               >
                 <Send className="w-3.5 h-3.5" />
@@ -477,17 +771,17 @@ export const NotificationSettingsModal: React.FC<NotificationSettingsModalProps>
           )}
 
           {testStatus && (
-            <p className="text-[11px] text-slate-300 bg-slate-950 p-2.5 rounded-lg border border-slate-800 font-mono">
+            <p className="text-[11px] text-text-primary bg-surface-base p-2.5 rounded-sg border border-border-subtle font-mono">
               {testStatus}
             </p>
           )}
         </div>
 
         {/* Data Integrity & Privacy Guarantee Notice */}
-        <div className="p-3.5 rounded-xl bg-slate-950/70 border border-slate-800 text-[11px] text-slate-400 leading-relaxed flex items-start gap-2">
+        <div className="p-3 rounded-sg bg-surface-base border border-border-subtle text-[11px] text-text-muted leading-relaxed flex items-start gap-2">
           <ShieldCheck className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
           <span>
-            <strong className="text-slate-300">Privacy &amp; Data Integrity Invariants:</strong> Subscriptions are possession-bound via private tokens. We never store personal identities or precise continuous geolocation. Push alerts are dispatched strictly upon genuine active bulletins from WMO CAP &amp; GDACS; zero notifications will be simulated or fabricated.
+            <strong className="text-white">Privacy &amp; Data Integrity Invariants:</strong> Subscriptions are possession-bound via private tokens. We never store personal identities or precise continuous geolocation. Push alerts are dispatched strictly upon genuine active bulletins from WMO CAP &amp; GDACS; zero notifications will be simulated or fabricated.
           </span>
         </div>
       </div>

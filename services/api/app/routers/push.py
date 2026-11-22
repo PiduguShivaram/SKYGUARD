@@ -1,11 +1,14 @@
 """Push notification router for subscription management, preferences, and diagnostic testing."""
 import json
+import time
+from collections import defaultdict
 from datetime import datetime, timezone
-from typing import Optional
+from typing import Dict, List, Optional
 
-from fastapi import APIRouter, Depends, Header, HTTPException, Query, status
+from fastapi import APIRouter, Depends, Header, HTTPException, Query, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from services.api.app.config import settings
 from services.api.app.db.base import get_db
 from services.api.app.db.models import PushSubscription
 from services.api.app.schemas.push import (
@@ -28,6 +31,23 @@ from services.api.app.services.vapid_service import get_vapid_public_key
 
 router = APIRouter(prefix="/api/v1/push", tags=["Push Notifications"])
 
+# In-memory sliding window rate limiter to prevent push endpoint registration spam
+_rate_limit_store: Dict[str, List[float]] = defaultdict(list)
+
+
+def check_rate_limit(key: str, limit: int = 10, window_seconds: int = 60) -> None:
+    """Sliding-window in-memory rate limiter per IP or endpoint key."""
+    now = time.time()
+    cutoff = now - window_seconds
+    timestamps = [t for t in _rate_limit_store[key] if t > cutoff]
+    if len(timestamps) >= limit:
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail=f"Rate limit exceeded ({limit} requests per {window_seconds}s). Please try again shortly.",
+        )
+    timestamps.append(now)
+    _rate_limit_store[key] = timestamps
+
 
 async def require_subscription_token(
     x_subscription_token: Optional[str] = Header(None, alias="X-Subscription-Token"),
@@ -48,6 +68,23 @@ async def require_subscription_token(
     return sub
 
 
+async def require_internal_worker_key(
+    x_worker_key: Optional[str] = Header(None, alias="X-Worker-Key"),
+) -> str:
+    """Enforce internal authorization for worker sync dispatches."""
+    if not settings.INTERNAL_WORKER_KEY:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Worker dispatch is disabled: INTERNAL_WORKER_KEY secret is not configured in environment.",
+        )
+    if not x_worker_key or x_worker_key != settings.INTERNAL_WORKER_KEY:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Forbidden: Invalid or missing X-Worker-Key authorization header.",
+        )
+    return x_worker_key
+
+
 @router.get("/vapid-public-key", response_model=VapidPublicKeyResponse)
 async def get_public_key():
     """Retrieve VAPID applicationServerKey in URL-safe base64 format for browser PushManager.subscribe."""
@@ -58,9 +95,13 @@ async def get_public_key():
 @router.post("/subscribe", response_model=PushSubscribeResponse, status_code=status.HTTP_201_CREATED)
 async def subscribe_push(
     payload: PushSubscribeRequest,
+    request: Request,
     db: AsyncSession = Depends(get_db),
 ):
     """Register browser push subscription and obtain secret client possession token."""
+    client_ip = request.client.host if request.client else "unknown"
+    check_rate_limit(f"subscribe:{client_ip}", limit=10, window_seconds=60)
+
     try:
         sub, token = await register_subscription(db, payload)
         categories = json.loads(sub.categories) if isinstance(sub.categories, str) else sub.categories
@@ -74,8 +115,11 @@ async def subscribe_push(
             latitude=sub.latitude,
             longitude=sub.longitude,
             radius_km=sub.radius_km,
+            wants_country_wide=bool(sub.wants_country_wide),
             created_at=sub.created_at,
         )
+    except PermissionError as perm_err:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(perm_err))
     except ValueError as val_err:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(val_err))
     except Exception as exc:
@@ -121,6 +165,7 @@ async def get_preferences(
         latitude=sub.latitude,
         longitude=sub.longitude,
         radius_km=sub.radius_km,
+        wants_country_wide=bool(sub.wants_country_wide),
         is_active=sub.is_active,
         created_at=sub.created_at,
         updated_at=sub.updated_at,
@@ -146,6 +191,8 @@ async def update_preferences(
         sub.longitude = payload.longitude
     if payload.radius_km is not None:
         sub.radius_km = payload.radius_km
+    if payload.wants_country_wide is not None:
+        sub.wants_country_wide = payload.wants_country_wide
     if payload.is_active is not None:
         sub.is_active = payload.is_active
 
@@ -163,6 +210,7 @@ async def update_preferences(
         latitude=sub.latitude,
         longitude=sub.longitude,
         radius_km=sub.radius_km,
+        wants_country_wide=bool(sub.wants_country_wide),
         is_active=sub.is_active,
         created_at=sub.created_at,
         updated_at=sub.updated_at,
@@ -175,6 +223,7 @@ async def send_test_push(
     db: AsyncSession = Depends(get_db),
 ):
     """Send an explicitly labeled diagnostic push notification containing zero weather claims."""
+    check_rate_limit(f"test:{sub.id}", limit=5, window_seconds=60)
     success, code, err = await send_diagnostic_test(db, sub)
     if not success:
         raise HTTPException(
@@ -191,6 +240,7 @@ async def send_test_push(
 
 @router.post("/dispatch-sync")
 async def trigger_dispatch_sync(
+    _worker_key: str = Depends(require_internal_worker_key),
     db: AsyncSession = Depends(get_db),
 ):
     """Trigger an on-demand synchronization and dispatch pass across active genuine alerts."""

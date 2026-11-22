@@ -21,6 +21,7 @@ from services.api.app.schemas.global_alerts import (
     ProviderHealth,
     ProviderHealthStatus,
 )
+from services.api.app.services.geo_matcher import is_explicitly_country_wide
 
 WMO_SWIC_ALL_JSON_URL = "https://severeweather.wmo.int/json/wmo_all.json"
 WMO_CAP_BASE_URL = "https://severeweather.wmo.int/v2/cap-alerts"
@@ -157,12 +158,16 @@ class WMOCAPAdapter:
                 ):
                     continue
 
-            # 4. Message Type and Cancellation
+            # 4. Message Type, Status, Scope, References and Cancellation
             headline = str(it.get("headline", "")).strip() or str(it.get("event", "Official Weather Warning"))
             event_name = str(it.get("event", "")).strip() or "Severe Weather Alert"
-            msg_type = "Alert"
+            msg_type = str(it.get("msgType") or "Alert").strip().capitalize()
             if any(k in headline.lower() or k in event_name.lower() for k in ["cancel", "cancellation", "expired"]):
                 msg_type = "Cancel"
+
+            status_val = str(it.get("status") or "Actual").strip().capitalize()
+            scope_val = str(it.get("scope") or "Public").strip().capitalize()
+            references_val = str(it.get("references") or "").strip() or None
 
             # 5. Severity, Urgency, Certainty
             s_code = it.get("s")
@@ -181,6 +186,39 @@ class WMOCAPAdapter:
             raw_id = str(it.get("id") or cap_rel_url)
             alert_id = f"WMO-{raw_id}"
 
+            # Polygons and Coordinates
+            polygons: List[str] = []
+            raw_poly = it.get("polygon") or it.get("polygons")
+            if raw_poly:
+                if isinstance(raw_poly, list):
+                    polygons.extend([str(p).strip() for p in raw_poly if str(p).strip()])
+                elif isinstance(raw_poly, str) and raw_poly.strip():
+                    polygons.append(raw_poly.strip())
+
+            # Circles extraction (CAP 1.2 lat,lon radius_km)
+            circles: List[str] = []
+            raw_circle = it.get("circle") or it.get("circles")
+            if raw_circle:
+                if isinstance(raw_circle, list):
+                    circles.extend([str(c).strip() for c in raw_circle if str(c).strip()])
+                elif isinstance(raw_circle, str) and raw_circle.strip():
+                    circles.append(raw_circle.strip())
+
+            item_lat = float(it["lat"]) if "lat" in it and it["lat"] is not None else None
+            item_lon = float(it["lon"]) if "lon" in it and it["lon"] is not None else None
+
+            is_countrywide = is_explicitly_country_wide(area_desc=area_desc, headline=headline)
+            if polygons:
+                geo_status = "POLYGON_VERIFIED"
+            elif circles:
+                geo_status = "CIRCLE_VERIFIED"
+            elif item_lat is not None and item_lon is not None:
+                geo_status = "COORDINATE_POINT"
+            elif is_countrywide:
+                geo_status = "TERRITORY_NATIONAL"
+            else:
+                geo_status = "LOCATION_UNVERIFIED"
+
             alert_item = GlobalAlertItem(
                 id=alert_id,
                 source_provider="WMO SWIC",
@@ -194,6 +232,9 @@ class WMOCAPAdapter:
                 local_color_code=local_color,
                 language=lang,
                 msg_type=msg_type,
+                status=status_val,
+                scope=scope_val,
+                references=references_val,
                 issuer=issuer,
                 country_code=item_country or None,
                 affected_area=area_desc,
@@ -201,6 +242,12 @@ class WMOCAPAdapter:
                 expires_time=expires_time or None,
                 description=headline,
                 source_url=full_cap_url,
+                latitude=item_lat,
+                longitude=item_lon,
+                polygons=polygons,
+                circles=circles,
+                is_country_wide=is_countrywide,
+                geographic_status=geo_status,
             )
 
             # Deduplication across languages for same raw_id

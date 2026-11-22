@@ -16,6 +16,7 @@ class CurrentWeather(BaseModel):
     weather_icon: str = Field(..., description="Visual icon identifier")
     wind_speed_10m: float = Field(..., description="Wind speed at 10m in km/h")
     wind_direction_10m: Optional[float] = Field(None, description="Wind direction in degrees")
+    cloud_cover: Optional[float] = Field(None, description="Cloud cover percentage (0-100%)")
 
 
 class HourlyForecastPoint(BaseModel):
@@ -26,6 +27,8 @@ class HourlyForecastPoint(BaseModel):
     weather_code: int = Field(..., description="WMO code")
     weather_description: str = Field(...)
     wind_speed_10m: float = Field(..., description="Wind speed in km/h")
+    cloud_cover: Optional[float] = Field(None, description="Cloud cover percentage (0-100%)")
+    is_day: Optional[int] = Field(None, description="1 if daylight, 0 if nighttime")
 
 
 class DailyForecastPoint(BaseModel):

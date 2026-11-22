@@ -39,11 +39,34 @@ class GlobalAlertItem(BaseModel):
     local_color_code: Optional[str] = Field(None, description="Preserved official local warning colour code (e.g. Red, Orange, Yellow, Blue, Level III)")
     language: Optional[str] = Field("en", description="Original bulletin language code (e.g. en, zh, de, cs)")
     msg_type: Optional[str] = Field("Alert", description="CAP message type: Alert, Update, Cancel")
+    status: Optional[str] = Field("Actual", description="CAP status: Actual, Exercise, System, Test, Draft")
+    scope: Optional[str] = Field("Public", description="CAP scope: Public, Restricted, Private")
+    references: Optional[str] = Field(None, description="CAP references string containing superseded alert identifiers")
     issuer: str = Field(..., description="Authentic issuing meteorological or disaster authority")
     country_code: Optional[str] = Field(None, description="Standardized ISO-2 country code")
     affected_area: str = Field(..., description="Official area description or territory name")
     latitude: Optional[float] = Field(None, description="Centroid or point latitude if officially supplied")
     longitude: Optional[float] = Field(None, description="Centroid or point longitude if officially supplied")
+    polygons: Optional[List[str]] = Field(
+        None,
+        description="List of CAP 1.2 space-delimited coordinate strings 'lat1,lon1 lat2,lon2 ...' representing official warning polygons",
+    )
+    circles: Optional[List[str]] = Field(
+        None,
+        description="List of CAP 1.2 circle coordinate strings 'latitude,longitude radius_km' representing official warning circles",
+    )
+    geocodes: Optional[List[Dict[str, str]]] = Field(
+        None,
+        description="Official administrative geocodes (FIPS, SAME, NUTS, etc.)",
+    )
+    is_country_wide: bool = Field(
+        False,
+        description="True if alert explicitly covers the entire national territory, rather than regional/local areas",
+    )
+    geographic_status: str = Field(
+        "LOCATION_VERIFIED",
+        description="LOCATION_VERIFIED or LOCATION_UNVERIFIED",
+    )
     effective_time: Optional[str] = Field(None, description="Start/effective timestamp")
     expires_time: Optional[str] = Field(None, description="Expiry timestamp")
     description: str = Field(..., description="Detailed description or bulletin extract")
@@ -70,7 +93,9 @@ class GlobalAlertsResponse(BaseModel):
     total_worldwide_disasters: int = Field(0, description="Total active disaster alerts globally before filtering")
     total_official_warnings: int = Field(..., description="Number of official warnings matching the current query filter")
     total_disaster_alerts: int = Field(..., description="Number of disaster alerts matching the current query filter")
-    official_cap_warnings: List[GlobalAlertItem] = Field(default_factory=list)
+    official_cap_warnings: List[GlobalAlertItem] = Field(default_factory=list, description="All official CAP warnings matching country/location")
+    local_verified_warnings: List[GlobalAlertItem] = Field(default_factory=list, description="Warnings whose polygon or radius strictly contains query coordinates")
+    country_wide_advisories: List[GlobalAlertItem] = Field(default_factory=list, description="National bulletins or location-unverified warnings for query country")
     gdacs_disaster_alerts: List[GlobalAlertItem] = Field(default_factory=list)
     providers_health: Dict[str, ProviderHealth]
     coverage_notes: str = Field(

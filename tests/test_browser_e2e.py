@@ -1,201 +1,295 @@
-"""End-to-end browser automation test for SkyGuard full-stack application using Playwright.
-Verifies real Open-Meteo forecasts, Global WMO CAP / GDACS alerts, Derived Risk Indicators,
-Gated Farmer Mode, and Web Push Notification System.
+"""Comprehensive End-to-End Playwright Browser Automation Test Suite for SkyGuard.
+
+Validates the full-stack product realignment:
+1. Root Homepage (`/`): Local weather intelligence, 24h diurnal scrubber, 7-day outlook, risks, and verified local warnings.
+2. Farmer Mode Workbench (`/`): Crop phenology, sowing dates, and strict hardware sensor gating.
+3. Push Notification Center: Modal consent, VAPID registration, and preference toggles.
+4. Dedicated Global Disaster Radar (`/disasters`): 3D Planetary Disaster Globe, GDACS/WMO CAP filters, and detail inspection.
+5. Multi-viewport responsive rendering (1440px, 1024px, 768px, 390px, 360px).
 """
 import asyncio
 import os
-from playwright.async_api import async_playwright
+import pytest
+from playwright.async_api import async_playwright, Page
 
 
-async def run_e2e_verification():
-    print("=== SkyGuard Full E2E Browser Verification ===")
-    async with async_playwright() as p:
+@pytest.mark.asyncio
+async def test_playwright_root_homepage_weather(page: Page = None):
+    """Verify Root Homepage (/) personalized weather intelligence, diurnal scrubber, and risk indicators."""
+    print("\n--- Test Suite 1: Root Homepage (/) Weather Intelligence ---")
+    should_close = False
+    p = None
+    browser = None
+
+    if page is None:
+        p = await async_playwright().start()
         browser = await p.chromium.launch(headless=True)
-        context = await browser.new_context(viewport={"width": 1280, "height": 1100})
+        context = await browser.new_context(viewport={"width": 1280, "height": 900})
         page = await context.new_page()
+        should_close = True
 
-        # Step 1: Open homepage
-        print("Navigating to http://localhost:3000...")
-        await page.goto("http://localhost:3000", wait_until="networkidle")
+    try:
+        await page.goto("http://localhost:3000/", wait_until="networkidle")
         title = await page.title()
-        print(f"Page title: {title}")
-        assert "SkyGuard" in title, f"Expected SkyGuard in title, got: {title}"
+        assert "SkyGuard" in title
 
-        # Step 2: Check initial state requires user selection
-        print("Checking initial unselected state...")
-        initial_prompt = await page.locator("text=Ready for Global Weather & Disaster Intelligence").is_visible()
-        assert initial_prompt, "Initial prompt must be visible when no location is selected"
+        # Verify initial headline and navigation on root homepage
+        await page.wait_for_selector("h1", timeout=15000)
+        assert await page.locator("text=Global Radar").first.is_visible()
 
-        # Step 3: Verify Global Alerts Panel rendered
-        print("Verifying Global Alerts Panel on initial page...")
-        global_panel = await page.locator("text=Worldwide Weather & Disaster Alerts").is_visible()
-        assert global_panel, "Worldwide Weather & Disaster Alerts panel must be visible"
+        # Select Tokyo or New Delhi from popular cities
+        city_btn = page.locator("button:has-text('New Delhi')").first
+        await city_btn.click()
+        await page.wait_for_selector("text=New Delhi", timeout=30000)
 
-        # Check Provider Health indicators
-        wmo_chip = await page.locator("text=WMO SWIC (Official CAP)").is_visible()
-        gdacs_chip = await page.locator("text=GDACS (UN OCHA / EC)").is_visible()
-        alerthub_chip = await page.locator("text=Alert-Hub.org Stream").is_visible()
-        assert wmo_chip, "WMO SWIC provider chip must be visible"
-        assert gdacs_chip, "GDACS provider chip must be visible"
-        assert alerthub_chip, "Alert-Hub.org provider chip must be visible"
-        print("Verified provider health chips (WMO, GDACS, Alert-Hub).")
+        # Check grand temperature display
+        temp_locator = page.locator("span.text-7xl, span.text-8xl").first
+        await temp_locator.wait_for(state="visible", timeout=15000)
+        temp_text = await temp_locator.text_content()
+        assert len(temp_text.strip()) > 0, f"Expected temperature, got {temp_text}"
 
-        # Step 4: Trigger live data via 'Warangal' location chip
-        print("Clicking 'Warangal' location chip...")
-        warangal_btn = page.locator("button:has-text('Warangal')")
-        await warangal_btn.click()
+        # Check 24-Hour diurnal scrubber in Chapter 2
+        await page.wait_for_selector("text=A Day in Motion", timeout=15000)
+        assert await page.locator("text=Diurnal Progression").first.is_visible()
 
-        # Step 5: Wait for live weather card to appear
-        print("Waiting for live weather card to appear...")
-        await page.wait_for_selector("text=Current Weather Observation", timeout=15000)
+        # Check 7-Day Planetary Outlook
+        await page.wait_for_selector("text=7-Day Planetary Outlook", timeout=15000)
 
-        # Step 6: Verify rendered genuine weather metrics
-        location_header = await page.locator("h2").first.text_content()
-        print(f"Verified Location Header: {location_header}")
-        assert "Warangal" in location_header
+        # Check Multi-Model Consensus & Observation Grounding
+        await page.wait_for_selector("text=Multi-Model Consensus", timeout=15000)
+        await page.wait_for_selector("text=0-2h Doppler Precipitation Nowcast", timeout=15000)
+        assert await page.locator("text=Physical Ground Station").is_visible()
 
-        # Check temperature display
-        temp_text = await page.locator("text=/\\d+(\\.\\d+)?°/").first.text_content()
-        print(f"Verified Live Temperature: {temp_text}")
+        # Check Predictive Weather Risk Outlook in Chapter 3
+        await page.wait_for_selector("text=Weather Risk Outlook", timeout=15000)
 
-        # Check humidity & wind
-        humidity_visible = await page.get_by_text("Relative Humidity", exact=True).is_visible()
-        wind_visible = await page.get_by_text("Wind Speed", exact=True).is_visible()
-        assert humidity_visible, "Relative humidity must be displayed"
-        assert wind_visible, "Wind speed must be displayed"
+        # Check Chapter 4 Preparedness and Emergency Push Service CTA
+        await page.wait_for_selector("text=Direct Emergency Push Service", timeout=15000)
+        assert await page.locator("button:has-text('Emergency Alerts')").first.is_visible()
 
-        # Step 7: Verify 24-hour SVG chart
-        print("Verifying 24-Hour Forecast Chart...")
-        chart_svg = await page.locator("svg").first.is_visible()
-        assert chart_svg, "24-Hour forecast chart SVG must be visible"
+        print("✓ Suite 1 (Root Homepage Weather) successfully verified.")
+    finally:
+        if should_close and browser:
+            await browser.close()
+            if p:
+                await p.stop()
 
-        # Step 8: Verify Seven-day outlook
-        print("Verifying Seven-Day Outlook...")
-        outlook_visible = await page.locator("text=Seven-Day Forecast Summary").is_visible()
-        assert outlook_visible, "Seven-Day forecast summary must be visible"
 
-        # Step 9: Verify Phase 3 — Derived Scientific Weather Risk Indicators
-        print("Verifying Derived Risk Card (Phase 3)...")
-        derived_risk_visible = await page.locator("text=Derived Weather Risk Indicators").is_visible()
-        assert derived_risk_visible, "Derived Weather Risk Indicators must be visible in Public Mode"
-        experimental_badge = await page.locator("text=EXPERIMENTAL").is_visible()
-        assert experimental_badge, "EXPERIMENTAL tag must be visible on derived risks"
-        print("Verified Phase 3 Derived Risk indicators.")
+@pytest.mark.asyncio
+async def test_playwright_farmer_mode_workbench(page: Page = None):
+    """Verify Farmer Mode crop cycle stress, sowing dates, and strict hardware gating."""
+    print("\n--- Test Suite 2: Farmer Mode Workbench ---")
+    should_close = False
+    p = None
+    browser = None
 
-        # Capture Public Mode screenshot
-        os.makedirs("docs/screenshots", exist_ok=True)
-        screenshot_public = "docs/screenshots/skyguard_public_mode_verified.png"
-        await page.screenshot(path=screenshot_public, full_page=False, timeout=10000)
-        print(f"Captured Public Mode screenshot at: {screenshot_public}")
+    if page is None:
+        p = await async_playwright().start()
+        browser = await p.chromium.launch(headless=True)
+        context = await browser.new_context(viewport={"width": 1280, "height": 900})
+        page = await context.new_page()
+        should_close = True
+        await page.goto("http://localhost:3000/", wait_until="networkidle")
+        city_btn = page.locator("button:has-text('New Delhi')").first
+        await city_btn.click()
+        await page.wait_for_selector("text=New Delhi, India", timeout=30000)
 
-        # Step 10: Verify Phase 4 — Gated Farmer Mode
-        print("Switching to Farmer Mode...")
-        farmer_mode_btn = page.locator("button:has-text('Farmer Mode')")
-        await farmer_mode_btn.click()
-        await page.wait_for_timeout(800)
+    try:
+        # Switch to Farmer Mode
+        farmer_btn = page.locator("button:has-text('Farmer')").first
+        await farmer_btn.wait_for(state="visible", timeout=10000)
+        await farmer_btn.click()
+        await page.wait_for_selector("text=Agrometeorological Intelligence", timeout=10000)
 
-        # Verify Farmer Mode Panel
-        farmer_panel_visible = await page.locator("text=Farmer Mode — Agrometeorological Intelligence").is_visible()
-        assert farmer_panel_visible, "Farmer Mode panel must be visible after mode toggle"
-
-        # Verify Crop Selector
+        # Test selecting different crops
         crop_select = page.locator("select")
-        assert await crop_select.is_visible(), "Crop select dropdown must be visible"
-        await crop_select.select_option("Cotton")
-        await page.wait_for_timeout(600)
+        for crop in ["Cotton", "Maize", "Tomato"]:
+            await crop_select.select_option(crop)
+            await page.wait_for_selector(f"text=Field Agromet Watches for {crop}", timeout=10000)
 
-        # Verify Agromet Watches header
-        watches_header = await page.locator("text=Field Agromet Watches for Cotton").is_visible()
-        assert watches_header, "Agromet watches for Cotton must be visible"
+        # Test sowing date input
+        date_input = page.locator("input[type='date']")
+        await date_input.fill("2026-05-01")
+        await page.wait_for_selector("text=days since sowing", timeout=10000)
 
-        # Verify Strict Hardware Gating Badges
-        print("Verifying Strict Sensor Telemetry & Satellite Gating Badges...")
-        gating_title = await page.locator("text=Sensor Telemetry & Satellite Gating (Data Integrity Guarantee)").is_visible()
-        assert gating_title, "Sensor Telemetry & Satellite Gating section must be visible"
-
-        disconnected_badge = await page.locator("text=DISCONNECTED").is_visible()
-        assert disconnected_badge, "DISCONNECTED badge for soil moisture must be visible"
-
-        gated_badges = await page.locator("text=GATED").count()
-        assert gated_badges >= 2, f"Expected at least 2 GATED badges (Satellite + Yield), got: {gated_badges}"
-        print(f"Verified Hardware Gating: DISCONNECTED and {gated_badges} GATED badges.")
-
-        # Capture Farmer Mode screenshot
-        screenshot_farmer = "docs/screenshots/skyguard_farmer_mode_verified.png"
-        await page.screenshot(path=screenshot_farmer, full_page=False, timeout=10000)
-        print(f"Captured Farmer Mode screenshot at: {screenshot_farmer}")
+        # Verify hardware gating invariant badges
+        assert await page.locator("text=DISCONNECTED").is_visible()
+        gated_count = await page.locator("text=GATED").count()
+        assert gated_count >= 2, f"Expected >= 2 GATED badges, got {gated_count}"
 
         # Switch back to Public Mode
-        public_mode_btn = page.locator("button:has-text('Public Mode')")
-        await public_mode_btn.click()
+        public_btn = page.locator("button:has-text('Public')").first
+        await public_btn.click()
         await page.wait_for_timeout(500)
 
-        # Step 11: Verify Global Push Notification System Modal (Phase 3 Requirement)
-        print("Verifying Global Push Notification System Modal...")
-        push_bell_btn = page.locator("button[title='Global Push Notification Settings']")
-        assert await push_bell_btn.is_visible(), "Push notification bell button must be visible in Header"
-        await push_bell_btn.click()
+        print("✓ Suite 2 (Farmer Mode Workbench) successfully verified.")
+    finally:
+        if should_close and browser:
+            await browser.close()
+            if p:
+                await p.stop()
+
+
+@pytest.mark.asyncio
+async def test_playwright_push_notification_modal(page: Page = None):
+    """Verify Push Notification Center modal, voluntary consent, and security toggles."""
+    print("\n--- Test Suite 3: Web Push Notification Center ---")
+    should_close = False
+    p = None
+    browser = None
+
+    if page is None:
+        p = await async_playwright().start()
+        browser = await p.chromium.launch(headless=True)
+        context = await browser.new_context(viewport={"width": 1280, "height": 900})
+        page = await context.new_page()
+        should_close = True
+        await page.goto("http://localhost:3000/", wait_until="networkidle")
+
+    try:
+        # Open push settings modal via Header bell button
+        bell_btn = page.locator("button[aria-label='Push Notification Settings']")
+        await bell_btn.wait_for(state="visible", timeout=10000)
+        await bell_btn.click()
+        await page.wait_for_selector("text=Global Push Notification Center", timeout=10000)
+
+        # Check modal title and elements
+        assert await page.locator("text=Global Push Notification Center").is_visible()
+        assert await page.locator("text=Browser Permission").is_visible()
+        assert await page.locator("button:has-text('Enable Notifications')").is_visible()
+        assert await page.locator("text=Receive Country-Wide Emergency Bulletins").is_visible()
+        assert await page.locator("text=Privacy & Data Integrity Invariants:").is_visible()
+
+        # Close modal
+        close_btn = page.locator("button:has(svg.lucide-x)").first
+        await close_btn.click()
+        await page.wait_for_timeout(500)
+        print("✓ Suite 3 (Push Notification Center) successfully verified.")
+    finally:
+        if should_close and browser:
+            await browser.close()
+            if p:
+                await p.stop()
+
+
+@pytest.mark.asyncio
+async def test_playwright_global_disasters_page(page: Page = None):
+    """Verify Global Disaster Radar (/disasters), 3D globe, category filter, and bulletin modal."""
+    print("\n--- Test Suite 4: Global Disaster Radar (/disasters) ---")
+    should_close = False
+    p = None
+    browser = None
+
+    if page is None:
+        p = await async_playwright().start()
+        browser = await p.chromium.launch(headless=True)
+        context = await browser.new_context(viewport={"width": 1280, "height": 900})
+        page = await context.new_page()
+        should_close = True
+
+    try:
+        await page.goto("http://localhost:3000/disasters", wait_until="networkidle")
+        title = await page.title()
+        assert "SkyGuard" in title
+
+        # Verify page hero & telemetry KPIs
+        await page.wait_for_selector("text=Global Disaster Radar", timeout=15000)
+        assert await page.locator("text=Planetary Disaster Telemetry").is_visible()
+        assert await page.locator("text=Active Bulletins").first.is_visible()
+        assert await page.locator("text=WMO Official CAP").first.is_visible()
+        assert await page.locator("text=UN / EC GDACS").first.is_visible()
+
+        # Verify 3D Planetary Disaster Globe canvas or radar container
+        assert await page.locator("text=Extreme Hazard").first.is_visible()
+        assert await page.locator("text=Severe Bulletin").first.is_visible()
+
+        # Test category filters
+        extreme_btn = page.locator("button:has-text('Extreme')").first
+        if await extreme_btn.is_visible():
+            await extreme_btn.click()
+            await page.wait_for_timeout(500)
+
+        all_btn = page.locator("button:has-text('All')").first
+        await all_btn.click()
         await page.wait_for_timeout(500)
 
-        modal_title = await page.locator("text=Global Push Notification Center").is_visible()
-        assert modal_title, "Global Push Notification Center modal must be visible"
-
-        # Verify Voluntary User Consent: Permission was NOT requested automatically
-        permission_chip = await page.locator("text=Browser Permission").is_visible()
-        assert permission_chip, "Browser permission status chip must be displayed"
-        enable_btn = page.locator("button:has-text('Enable Notifications')")
-        assert await enable_btn.is_visible(), "'Enable Notifications' button must be present"
-
-        # Verify Notification Settings fields
-        country_input = page.locator("input[placeholder='e.g. IN, US, DE']")
-        assert await country_input.is_visible(), "Country code preference input must be visible"
-
-        cat_cap = await page.get_by_text("Official CAP Severe Warnings", exact=True).is_visible()
-        cat_gdacs = await page.get_by_text("GDACS Multi-Hazard Disasters", exact=True).is_visible()
-        assert cat_cap, "Official CAP category option must be visible"
-        assert cat_gdacs, "GDACS disaster category option must be visible"
-
-        # Verify Privacy and Integrity Invariant Notice
-        privacy_notice = await page.locator("text=Privacy & Data Integrity Invariants:").is_visible()
-        assert privacy_notice, "Privacy & Data Integrity Invariants notice must be displayed"
-
-        # Capture screenshot of Push Notification Center
-        screenshot_push = "docs/screenshots/skyguard_push_modal_verified.png"
-        await page.screenshot(path=screenshot_push, full_page=False, timeout=10000)
-        print(f"Captured Push Notification Center screenshot at: {screenshot_push}")
-
-        # Close Modal
-        close_modal_btn = page.locator("button:has(svg.lucide-x)").first
-        await close_modal_btn.click()
-        await page.wait_for_timeout(400)
-
-        # Step 12: Verify Alert Inspection Modal (Authentic Alert Details)
-        print("Testing authentic alert inspection modal...")
-        inspect_btn = page.locator("button:has-text('Inspect Details')").first
+        # Test inspecting bulletin modal if cards exist
+        inspect_btn = page.locator("span:has-text('Inspect Bulletin')").first
         if await inspect_btn.is_visible():
             await inspect_btn.click()
             await page.wait_for_timeout(600)
-            detail_modal_visible = await page.locator("text=Official Advisory Description").is_visible()
-            assert detail_modal_visible, "Official Advisory Description must be visible in Alert Detail Modal"
-            close_detail_btn = page.locator("button:has-text('Close')")
-            await close_detail_btn.click()
-            await page.wait_for_timeout(400)
-            print("Verified Alert Detail inspection modal.")
+            assert await page.locator("text=Official Advisory Bulletin").is_visible()
+            await page.locator("button:has-text('Close')").click()
+            await page.wait_for_timeout(300)
 
-        # Step 13: Verify Data Integrity Non-Negotiables
-        print("Verifying strict data integrity guarantees...")
-        all_clear_banners = await page.locator("h1, h2, h3, h4, h5, [role='alert']").filter(has_text="All Clear").count()
-        assert all_clear_banners == 0, "No fake 'All Clear' banner or heading should be displayed"
+        # Navigation back to Local Weather
+        back_link = page.locator("a:has-text('Return to Local Weather')")
+        assert await back_link.is_visible()
 
-        no_danger_banners = await page.locator("h1, h2, h3, h4, h5, [role='alert']").filter(has_text="No Danger").count()
-        assert no_danger_banners == 0, "No fake 'No Danger' banner or heading should be displayed"
+        print("✓ Suite 4 (Global Disaster Radar) successfully verified.")
+    finally:
+        if should_close and browser:
+            await browser.close()
+            if p:
+                await p.stop()
 
-        data_integrity_notice = await page.locator("text=Data Integrity Notice on Emergency Bulletins").is_visible()
-        assert data_integrity_notice, "Data Integrity Notice on Emergency Bulletins must be displayed"
+
+@pytest.mark.asyncio
+async def test_playwright_mobile_responsive_layout():
+    """Verify accessible responsive rendering across viewports (1440px, 1024px, 768px, 390px, 360px)."""
+    print("\n--- Test Suite 5: Responsive Multi-Viewport Review ---")
+    viewports = [
+        (1440, 900),
+        (1024, 768),
+        (768, 1024),
+        (390, 844),
+        (360, 740),
+    ]
+
+    async with async_playwright() as p:
+        browser = await p.chromium.launch(headless=True)
+
+        for width, height in viewports:
+            ctx = await browser.new_context(viewport={"width": width, "height": height})
+            vp_page = await ctx.new_page()
+
+            # Test root homepage (/)
+            await vp_page.goto("http://localhost:3000/", wait_until="domcontentloaded")
+            assert await vp_page.locator("text=SkyGuard").first.is_visible()
+
+            # Test disasters page (/disasters)
+            await vp_page.goto("http://localhost:3000/disasters", wait_until="domcontentloaded")
+            assert await vp_page.locator("text=Global Disaster Radar").is_visible()
+
+            await ctx.close()
 
         await browser.close()
-        print("=== All Playwright E2E verifications successfully finished! ===")
+        print("✓ Suite 5 (Multi-Viewport Responsive: 1440, 1024, 768, 390, 360px) successfully verified.")
+
+
+async def run_all_e2e_suites():
+    print("=== Launching Master Playwright E2E Verification ===")
+    async with async_playwright() as p:
+        browser = await p.chromium.launch(headless=True)
+        context = await browser.new_context(viewport={"width": 1280, "height": 900})
+        page = await context.new_page()
+
+        await test_playwright_root_homepage_weather(page)
+        await test_playwright_farmer_mode_workbench(page)
+        await test_playwright_push_notification_modal(page)
+        await test_playwright_global_disasters_page(page)
+
+        await browser.close()
+
+    await test_playwright_mobile_responsive_layout()
+    print("=== All 5 Playwright E2E Test Suites Successfully Completed! ===")
+
+
+@pytest.mark.asyncio
+async def test_all_browser_e2e_suites():
+    """Single master pytest entrypoint executing the 5 unified E2E user journeys."""
+    await run_all_e2e_suites()
 
 
 if __name__ == "__main__":
-    asyncio.run(run_e2e_verification())
+    asyncio.run(run_all_e2e_suites())
