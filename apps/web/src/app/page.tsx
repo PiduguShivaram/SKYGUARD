@@ -7,6 +7,7 @@ import { FarmerModePanel } from "@/components/FarmerModePanel";
 import { DerivedRiskCard } from "@/components/DerivedRiskCard";
 import { NotificationSettingsModal } from "@/components/NotificationSettingsModal";
 import { AlertDetailModal } from "@/components/AlertDetailModal";
+import { AboutModal } from "@/components/AboutModal";
 import { ProvenanceFooter } from "@/components/ProvenanceFooter";
 import { ErrorState } from "@/components/ErrorState";
 import {
@@ -90,6 +91,7 @@ export default function SkyGuardHomePage() {
 
   // Modals & Push Notifications
   const [isNotificationModalOpen, setIsNotificationModalOpen] = useState<boolean>(false);
+  const [isAboutModalOpen, setIsAboutModalOpen] = useState<boolean>(false);
   const [notificationsActive, setNotificationsActive] = useState<boolean>(false);
   const [selectedAlertForDetail, setSelectedAlertForDetail] = useState<GlobalAlertItem | null>(null);
 
@@ -464,6 +466,7 @@ export default function SkyGuardHomePage() {
           currentMode={appMode}
           onModeChange={(m) => setAppMode(m)}
           onOpenNotifications={() => setIsNotificationModalOpen(true)}
+          onOpenAbout={() => setIsAboutModalOpen(true)}
           notificationsActive={notificationsActive}
           activeNav="weather"
           theme={theme}
@@ -811,7 +814,7 @@ export default function SkyGuardHomePage() {
 
       {/* 5. Authentic Meteorological Provenance Footer */}
       <footer className="relative z-20 mt-16 border-t border-[#2A3141]">
-        <ProvenanceFooter weather={weatherData} />
+        <ProvenanceFooter weather={weatherData} onOpenAbout={() => setIsAboutModalOpen(true)} />
       </footer>
 
       {/* 6. Modals */}
@@ -825,6 +828,11 @@ export default function SkyGuardHomePage() {
         alertId={selectedAlertForDetail?.id || null}
         onClose={() => setSelectedAlertForDetail(null)}
         preloadedAlert={selectedAlertForDetail}
+      />
+
+      <AboutModal
+        isOpen={isAboutModalOpen}
+        onClose={() => setIsAboutModalOpen(false)}
       />
     </div>
   );

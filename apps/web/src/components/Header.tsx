@@ -9,6 +9,7 @@ interface HeaderProps {
   currentMode?: "public" | "farmer";
   onModeChange?: (mode: "public" | "farmer") => void;
   onOpenNotifications?: () => void;
+  onOpenAbout?: () => void;
   notificationsActive?: boolean;
   activeNav?: "weather" | "disasters";
   theme?: "light" | "dark";
@@ -20,6 +21,7 @@ export const Header: React.FC<HeaderProps> = ({
   currentMode = "public",
   onModeChange,
   onOpenNotifications,
+  onOpenAbout,
   notificationsActive,
   activeNav = "weather",
   theme = "light",
@@ -75,13 +77,24 @@ export const Header: React.FC<HeaderProps> = ({
               <span>Global Radar</span>
             </Link>
 
-            <Link
-              href="/#about"
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-sg text-xs font-medium text-white/70 hover:text-white hover:bg-white/10 transition-all"
-            >
-              <Info className="w-3.5 h-3.5 text-[#60A5FA]" />
-              <span>About</span>
-            </Link>
+            {onOpenAbout ? (
+              <button
+                type="button"
+                onClick={onOpenAbout}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-sg text-xs font-medium text-white/70 hover:text-white hover:bg-white/10 transition-all cursor-pointer"
+              >
+                <Info className="w-3.5 h-3.5 text-[#60A5FA]" />
+                <span>About</span>
+              </button>
+            ) : (
+              <Link
+                href="/#about"
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-sg text-xs font-medium text-white/70 hover:text-white hover:bg-white/10 transition-all"
+              >
+                <Info className="w-3.5 h-3.5 text-[#60A5FA]" />
+                <span>About</span>
+              </Link>
+            )}
           </nav>
 
           {/* Mode Selector (Public vs Farmer) - shown on weather page */}
